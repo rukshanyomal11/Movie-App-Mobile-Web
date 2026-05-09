@@ -197,6 +197,7 @@ export async function createMovieSchedule(form, adminProfileId) {
       language: form.language,
       status: form.status,
       poster_url: form.posterUrl || null,
+      tmdb_id: form.tmdbId || null,
       created_by: adminProfileId,
     })
     .select('id, title')

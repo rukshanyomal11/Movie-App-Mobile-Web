@@ -69,12 +69,12 @@ export function TMDBSearch({ onSelect }) {
     const langMap = { en: 'English', si: 'Sinhala', ta: 'Tamil', hi: 'Hindi', fr: 'French', de: 'German', ja: 'Japanese', ko: 'Korean', zh: 'Chinese' };
     const langName = langMap[movie.original_language] || movie.original_language?.toUpperCase() || '';
 
-    onSelect({ title: movie.title, genre, language: langName, year, posterPath: movie.poster_path, overview: movie.overview });
+    onSelect({ title: movie.title, genre, language: langName, year, posterPath: movie.poster_path, overview: movie.overview, tmdbId: movie.id });
   }
 
   function handleClear() {
     setQuery(''); setResults([]); setSelected(null); setError('');
-    onSelect({ title: '', genre: '', language: '' });
+    onSelect({ title: '', genre: '', language: '', tmdbId: '' });
     inputRef.current?.focus();
   }
 
