@@ -98,7 +98,8 @@ export async function fetchDashboardData() {
             title,
             genre,
             language,
-            status
+            status,
+            poster_url
           ),
           screen:screens!showtimes_screen_id_fkey (
             id,
@@ -195,6 +196,7 @@ export async function createMovieSchedule(form, adminProfileId) {
       genre: form.genre,
       language: form.language,
       status: form.status,
+      poster_url: form.posterUrl || null,
       created_by: adminProfileId,
     })
     .select('id, title')
@@ -411,6 +413,7 @@ function mapMovies(showtimes, bookings) {
     title: row.movie?.title ?? 'Untitled',
     genre: row.movie?.genre ?? 'Unassigned',
     language: row.movie?.language ?? 'Unassigned',
+    posterUrl: row.movie?.poster_url ?? '',
     showDate: formatDate(row.show_date),
     showTime: formatTime(row.start_time),
     hall: row.screen?.name ?? 'Unassigned hall',

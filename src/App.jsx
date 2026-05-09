@@ -25,6 +25,7 @@ import {
 const emptyMovieForm = {
   title: '', genre: '', language: '', theaterName: '', city: '',
   hall: '', format: '2D', showTime: '', ticketPrice: '', status: 'now_showing',
+  posterUrl: '',
 };
 const emptyServiceForm = { name: '', category: '', branch: '', price: '', status: 'active' };
 
@@ -252,12 +253,13 @@ export default function App() {
                 description="Search a movie to auto-fill the form below — powered by The Movie Database."
               >
                 <TMDBSearch
-                  onSelect={({ title, genre, language }) =>
+                  onSelect={({ title, genre, language, posterPath }) =>
                     setMovieForm(cur => ({
                       ...cur,
                       ...(title    ? { title }    : {}),
                       ...(genre    ? { genre }    : {}),
                       ...(language ? { language } : {}),
+                      posterUrl: posterPath ? `https://image.tmdb.org/t/p/w342${posterPath}` : '',
                     }))
                   }
                 />
