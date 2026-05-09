@@ -1,4 +1,5 @@
 import { Badge, EmptyState, InputField, SelectField } from './UI.jsx';
+import { Trash2 } from 'lucide-react';
 import { Film, ShoppingBag, Users, Ticket } from 'lucide-react';
 
 // ── FORMATTERS ──────────────────────────────────────────────────────────────
@@ -16,7 +17,7 @@ const movieStatusOpts = [
   { value: 'paused',      label: 'Paused' },
 ];
 
-export function MoviesTable({ movies, onStatusChange, compact }) {
+export function MoviesTable({ movies, onStatusChange, onDelete, compact }) {
   if (!movies.length) return <EmptyState icon={Film} message="No showtimes found for today." />;
   return (
     <div className="table-wrap">
@@ -28,6 +29,7 @@ export function MoviesTable({ movies, onStatusChange, compact }) {
             <th>Time</th>
             <th>Sold</th>
             <th>Status</th>
+            {onDelete && <th></th>}
           </tr>
         </thead>
         <tbody>
@@ -54,6 +56,23 @@ export function MoviesTable({ movies, onStatusChange, compact }) {
                   <Badge status={m.status} />
                 )}
               </td>
+              {onDelete && (
+                <td>
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    style={{ padding: '0.3rem 0.6rem', minHeight: 'unset' }}
+                    title={`Delete ${m.title}`}
+                    onClick={() => {
+                      if (window.confirm(`Delete "${m.title}" and its showtime? This cannot be undone.`)) {
+                        onDelete(m.id, m.movieId, m.title);
+                      }
+                    }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -192,7 +211,17 @@ export function MovieForm({ form, onChange, onSubmit }) {
       <InputField id="m-city"    label="City"            value={form.city}        onChange={set('city')}        placeholder="Colombo" />
       <InputField id="m-hall"    label="Hall"            value={form.hall}        onChange={set('hall')}        placeholder="Hall A" />
       <SelectField id="m-fmt"   label="Format"          value={form.format}      onChange={set('format')}      options={formatOpts} />
-      <InputField id="m-time"    label="Show Time"       value={form.showTime}    onChange={set('showTime')}    placeholder="18:30" />
+      {/* Time picker — enforces HH:MM format, prevents "16.30" syntax errors */}
+      <div className="field-group">
+        <label htmlFor="m-time">Show Time</label>
+        <input
+          id="m-time"
+          type="time"
+          value={form.showTime}
+          onChange={e => set('showTime')(e.target.value)}
+          style={{ colorScheme: 'dark' }}
+        />
+      </div>
       <InputField id="m-price"   label="Ticket Price"    value={form.ticketPrice} onChange={set('ticketPrice')} placeholder="1800" type="number" />
       <SelectField id="m-status" label="Status"          value={form.status}      onChange={set('status')}      options={movieStatusOpts} />
       <div className="form-actions" style={{ gridColumn: '1 / -1' }}>

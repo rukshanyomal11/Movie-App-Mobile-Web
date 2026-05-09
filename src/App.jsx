@@ -3,6 +3,7 @@ import {
   createMovieSchedule, createService, fetchDashboardData,
   getCurrentSession, loadAdminProfile, signInAdmin, signOutAdmin,
   subscribeToAuthChanges, updateMovieStatus, updateServiceStatus,
+  deleteMovieSchedule,
 } from './supabaseAdminApi';
 import { getSupabaseConfigError, hasSupabaseConfig } from './supabaseClient';
 
@@ -13,6 +14,7 @@ import {
   MoviesTable, ServicesTable, UsersTable, BookingsTable,
   MovieForm, ServiceForm, formatCurrency,
 } from './components/DataComponents.jsx';
+import { TMDBSearch } from './components/TMDBSearch.jsx';
 
 import {
   Film, Ticket, Users, TrendingUp, RefreshCw,
@@ -187,6 +189,16 @@ export default function App() {
     catch (e) { setNotice({ type: 'error', msg: getErrorMessage(e) }); }
   }
 
+  async function handleDeleteMovie(showtimeId, movieId, title) {
+    try {
+      await deleteMovieSchedule(showtimeId, movieId, title, adminProfile.id);
+      await refreshDashboard();
+      setNotice({ type: 'success', msg: `"${title}" deleted successfully.` });
+    } catch (e) {
+      setNotice({ type: 'error', msg: getErrorMessage(e) });
+    }
+  }
+
   // ── RENDER GUARDS ──────────────────────────────────────────────────────────
   if (!hasSupabaseConfig)     return <ConfigScreen message={getSupabaseConfigError()} />;
   if (!session)               return <LoginScreen form={loginForm} error={loginError} onChange={setLoginForm} onSubmit={handleLogin} isLoading={isBootstrapping} />;
@@ -233,13 +245,33 @@ export default function App() {
             <DashboardView metrics={metrics} movies={movies} services={services} users={users} bookings={bookings} topMovies={topMovies} />
           )}
           {activeView === 'movies' && (
-            <div className="content-grid--wide" style={{ display: 'grid', gap: '1.25rem' }}>
-              <SectionPanel title="Add Movie Schedule" description="Add a new movie and showtime record directly to Supabase.">
-                <MovieForm form={movieForm} onChange={setMovieForm} onSubmit={handleMovieSubmit} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {/* TMDB Search */}
+              <SectionPanel
+                title="Search Movie from TMDB"
+                description="Search a movie to auto-fill the form below — powered by The Movie Database."
+              >
+                <TMDBSearch
+                  onSelect={({ title, genre, language }) =>
+                    setMovieForm(cur => ({
+                      ...cur,
+                      ...(title    ? { title }    : {}),
+                      ...(genre    ? { genre }    : {}),
+                      ...(language ? { language } : {}),
+                    }))
+                  }
+                />
               </SectionPanel>
-              <SectionPanel title="Today's Schedule" description="Live showtime data from the movies + showtimes tables.">
-                <MoviesTable movies={movies} onStatusChange={handleMovieStatusChange} />
-              </SectionPanel>
+
+              {/* Form + Schedule */}
+              <div className="content-grid--wide" style={{ display: 'grid', gap: '1.25rem' }}>
+                <SectionPanel title="Add Movie Schedule" description="Fill in the remaining details and save to Supabase.">
+                  <MovieForm form={movieForm} onChange={setMovieForm} onSubmit={handleMovieSubmit} />
+                </SectionPanel>
+                <SectionPanel title="Today's Schedule" description="Live showtime data from the movies + showtimes tables.">
+                  <MoviesTable movies={movies} onStatusChange={handleMovieStatusChange} onDelete={handleDeleteMovie} />
+                </SectionPanel>
+              </div>
             </div>
           )}
           {activeView === 'services' && (

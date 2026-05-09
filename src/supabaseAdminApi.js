@@ -227,6 +227,26 @@ export async function updateMovieStatus(movieId, nextStatus, adminProfileId) {
   await writeAuditLog(adminProfileId, 'movie', movieId, 'status_update', nextStatus);
 }
 
+export async function deleteMovieSchedule(showtimeId, movieId, movieTitle, adminProfileId) {
+  // Delete showtime first (child of movie via foreign key)
+  const { error: stError } = await supabase
+    .from('showtimes')
+    .delete()
+    .eq('id', showtimeId);
+
+  throwIfError(stError);
+
+  // Delete the movie record
+  const { error: mvError } = await supabase
+    .from('movies')
+    .delete()
+    .eq('id', movieId);
+
+  throwIfError(mvError);
+
+  await writeAuditLog(adminProfileId, 'movie', movieId, 'delete', `Deleted ${movieTitle}`);
+}
+
 export async function createService(form, adminProfileId) {
   const { data, error } = await supabase
     .from('services')
