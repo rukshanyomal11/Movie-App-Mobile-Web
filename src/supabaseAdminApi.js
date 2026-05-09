@@ -67,18 +67,18 @@ export async function loadAdminProfile(user) {
     payload.auth_user_id = user.id;
   }
 
-  const { data, error } = await supabase
+  // Best-effort update — if RLS blocks it, we still allow login using the
+  // profile data already fetched above.
+  const { error: updateError } = await supabase
     .from('app_users')
     .update(payload)
-    .eq('id', profile.id)
-    .select('id, auth_user_id, role, full_name, email, status, last_login_at, created_at')
-    .single();
+    .eq('id', profile.id);
 
-  if (error) {
-    throw error;
+  if (updateError) {
+    console.warn('Could not update admin profile fields:', updateError.message);
   }
 
-  return mapAdminProfile(data);
+  return mapAdminProfile({ ...profile, ...payload });
 }
 
 export async function fetchDashboardData() {
