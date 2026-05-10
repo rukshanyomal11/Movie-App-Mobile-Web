@@ -432,6 +432,35 @@ h1, h2, h3, h4 { margin: 0; }
   line-height: 1.5;
 }
 
+.filter-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.filter-chip {
+  min-height: 34px;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.filter-chip:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.filter-chip--active {
+  background: var(--gold-dim);
+  border-color: var(--line-gold);
+  color: var(--gold-light);
+}
+
 /* ── CONTENT GRIDS ── */
 .content-grid {
   display: grid;
@@ -474,6 +503,13 @@ h1, h2, h3, h4 { margin: 0; }
 .data-table tr:hover td { background: var(--surface-hover); }
 .data-table td strong { display: block; font-weight: 600; margin-bottom: 0.15rem; }
 .data-table td span { font-size: 0.78rem; color: var(--text-muted); }
+
+.table-cell-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+}
 
 .movie-cell {
   display: flex;

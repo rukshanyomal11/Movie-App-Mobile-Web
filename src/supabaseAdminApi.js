@@ -113,7 +113,7 @@ export async function fetchDashboardData() {
           )
         `,
       )
-      .eq('show_date', todayDate)
+      .order('show_date', { ascending: false })
       .order('start_time'),
     supabase
       .from('services')
@@ -408,25 +408,52 @@ function mapMovies(showtimes, bookings) {
     );
   }
 
-  return showtimes.map((row) => ({
-    id: row.id,
-    movieId: row.movie?.id ?? '',
-    title: row.movie?.title ?? 'Untitled',
-    genre: row.movie?.genre ?? 'Unassigned',
-    language: row.movie?.language ?? 'Unassigned',
-    posterUrl: row.movie?.poster_url ?? '',
-    showDate: formatDate(row.show_date),
-    showTime: formatTime(row.start_time),
-    hall: row.screen?.name ?? 'Unassigned hall',
-    branch: row.screen?.theater?.name ?? 'Unassigned theater',
-    city: row.screen?.theater?.city ?? 'Unassigned city',
-    format: row.screen?.format ?? '2D',
-    ticketPrice: Number(row.ticket_price ?? 0),
-    seatsLeft: Number(row.seats_available ?? 0),
-    ticketsSold: soldSeatsByShowtime.get(row.id) ?? 0,
-    status: row.movie?.status ?? 'upcoming',
-    showtimeStatus: row.status ?? 'scheduled',
-  }));
+  return showtimes
+    .map((row) => ({
+      id: row.id,
+      movieId: row.movie?.id ?? '',
+      title: row.movie?.title ?? 'Untitled',
+      genre: row.movie?.genre ?? 'Unassigned',
+      language: row.movie?.language ?? 'Unassigned',
+      posterUrl: row.movie?.poster_url ?? '',
+      showDate: formatDate(row.show_date),
+      showDateValue: row.show_date ?? '',
+      showTime: formatTime(row.start_time),
+      showTimeValue: row.start_time ?? '',
+      hall: row.screen?.name ?? 'Unassigned hall',
+      branch: row.screen?.theater?.name ?? 'Unassigned theater',
+      city: row.screen?.theater?.city ?? 'Unassigned city',
+      format: row.screen?.format ?? '2D',
+      ticketPrice: Number(row.ticket_price ?? 0),
+      seatsLeft: Number(row.seats_available ?? 0),
+      ticketsSold: soldSeatsByShowtime.get(row.id) ?? 0,
+      status: row.movie?.status ?? 'upcoming',
+      showtimeStatus: row.status ?? 'scheduled',
+    }))
+    .sort(sortMoviesForAdminBoard);
+}
+
+function sortMoviesForAdminBoard(a, b) {
+  const statusOrder = {
+    now_showing: 0,
+    featured: 1,
+    upcoming: 2,
+    paused: 3,
+  };
+
+  const statusDiff =
+    (statusOrder[a.status] ?? Number.MAX_SAFE_INTEGER) -
+    (statusOrder[b.status] ?? Number.MAX_SAFE_INTEGER);
+
+  if (statusDiff !== 0) {
+    return statusDiff;
+  }
+
+  if (a.showDateValue !== b.showDateValue) {
+    return b.showDateValue.localeCompare(a.showDateValue);
+  }
+
+  return a.showTimeValue.localeCompare(b.showTimeValue);
 }
 
 function mapServices(rows) {

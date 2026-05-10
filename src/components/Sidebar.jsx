@@ -2,7 +2,7 @@ import { Film, LayoutDashboard, Ticket, Users, ShoppingBag, Database, LogOut } f
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'movies',    label: 'Today Movies', icon: Film },
+  { id: 'movies',    label: 'Movie Schedule', icon: Film },
   { id: 'services',  label: 'Services', icon: ShoppingBag },
   { id: 'users',     label: 'App Users', icon: Users },
   { id: 'bookings',  label: 'Bookings', icon: Ticket },

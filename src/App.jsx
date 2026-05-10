@@ -28,6 +28,12 @@ const emptyMovieForm = {
   posterUrl: '', tmdbId: '',
 };
 const emptyServiceForm = { name: '', category: '', branch: '', price: '', status: 'active' };
+const movieBoardFilters = [
+  { value: 'now_showing', label: 'Now Showing' },
+  { value: 'upcoming', label: 'Upcoming' },
+  { value: 'paused', label: 'Paused' },
+  { value: 'all', label: 'All' },
+];
 
 function getErrorMessage(e) {
   if (!e) return 'Unexpected error.';
@@ -40,8 +46,40 @@ function getTodayLabel() {
 }
 
 function getViewTitle(v) {
-  const map = { dashboard: 'Dashboard', movies: 'Today Movies', services: 'Services', users: 'App Users', bookings: 'Bookings', database: 'Database' };
+  const map = { dashboard: 'Dashboard', movies: 'Movie Schedule', services: 'Services', users: 'App Users', bookings: 'Bookings', database: 'Database' };
   return map[v] || v;
+}
+
+function matchesMovieBoardFilter(movie, filter) {
+  if (filter === 'all') {
+    return true;
+  }
+
+  if (filter === 'now_showing') {
+    return ['now_showing', 'featured'].includes(movie.status) && movie.showtimeStatus !== 'cancelled';
+  }
+
+  if (filter === 'paused') {
+    return movie.status === 'paused' || movie.showtimeStatus === 'cancelled';
+  }
+
+  return movie.status === filter;
+}
+
+function getMoviesEmptyMessage(filter) {
+  if (filter === 'now_showing') {
+    return 'No now showing movies in the schedule.';
+  }
+
+  if (filter === 'upcoming') {
+    return 'No upcoming movies in the schedule.';
+  }
+
+  if (filter === 'paused') {
+    return 'No paused movies in the schedule.';
+  }
+
+  return 'No movies found in the schedule.';
 }
 
 // ── APP ───────────────────────────────────────────────────────────────────────
@@ -60,6 +98,7 @@ export default function App() {
   const [isSyncing, setIsSyncing]       = useState(false);
   const [movieForm, setMovieForm]       = useState(emptyMovieForm);
   const [serviceForm, setServiceForm]   = useState(emptyServiceForm);
+  const [movieBoardFilter, setMovieBoardFilter] = useState('now_showing');
 
   // Auto-clear notice
   useEffect(() => {
@@ -129,19 +168,30 @@ export default function App() {
 
   // Metrics
   const metrics = useMemo(() => {
-    const liveMovies    = movies.filter(m => ['now_showing', 'featured'].includes(m.status)).length;
+    const liveMovies    = movies.filter((movie) => matchesMovieBoardFilter(movie, 'now_showing')).length;
     const activeServices = services.filter(s => s.status === 'active').length;
     const activeUsers   = users.filter(u => u.status === 'active').length;
     const revenue       = bookings.filter(b => b.paymentStatus === 'paid').reduce((t, b) => t + b.total, 0);
     return [
-      { label: 'Live Shows',      value: `${liveMovies}`,         hint: "Today's active showtimes",  icon: Film },
+      { label: 'Now Showing',     value: `${liveMovies}`,         hint: 'Movies that stay live until paused or deleted', icon: Film },
       { label: 'Total Bookings',  value: `${bookings.length}`,    hint: 'All booking records',       icon: Ticket },
       { label: 'Mobile Users',    value: `${activeUsers}`,        hint: 'Active customer accounts',  icon: Users },
       { label: 'Paid Revenue',    value: formatCurrency(revenue), hint: 'Confirmed paid bookings',   icon: TrendingUp },
     ];
   }, [movies, services, users, bookings]);
 
-  const topMovies = useMemo(() => [...movies].sort((a, b) => b.ticketsSold - a.ticketsSold).slice(0, 5), [movies]);
+  const visibleMovies = useMemo(
+    () => movies.filter((movie) => matchesMovieBoardFilter(movie, movieBoardFilter)),
+    [movies, movieBoardFilter],
+  );
+  const topMovies = useMemo(
+    () =>
+      [...movies]
+        .filter((movie) => matchesMovieBoardFilter(movie, 'now_showing'))
+        .sort((a, b) => b.ticketsSold - a.ticketsSold)
+        .slice(0, 5),
+    [movies],
+  );
 
   // Handlers
   async function handleLogin(e) {
@@ -271,8 +321,30 @@ export default function App() {
                 <SectionPanel title="Add Movie Schedule" description="Fill in the remaining details and save to Supabase.">
                   <MovieForm form={movieForm} onChange={setMovieForm} onSubmit={handleMovieSubmit} />
                 </SectionPanel>
-                <SectionPanel title="Today's Schedule" description="Live showtime data from the movies + showtimes tables.">
-                  <MoviesTable movies={movies} onStatusChange={handleMovieStatusChange} onDelete={handleDeleteMovie} />
+                <SectionPanel
+                  title="Today's Schedule"
+                  description="Status-based movie board. A movie stays here on future days until the admin pauses or deletes it."
+                  action={(
+                    <div className="filter-chip-group" role="tablist" aria-label="Movie schedule filters">
+                      {movieBoardFilters.map((filter) => (
+                        <button
+                          key={filter.value}
+                          type="button"
+                          className={`filter-chip ${movieBoardFilter === filter.value ? 'filter-chip--active' : ''}`}
+                          onClick={() => setMovieBoardFilter(filter.value)}
+                        >
+                          {filter.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                >
+                  <MoviesTable
+                    movies={visibleMovies}
+                    onStatusChange={handleMovieStatusChange}
+                    onDelete={handleDeleteMovie}
+                    emptyMessage={getMoviesEmptyMessage(movieBoardFilter)}
+                  />
                 </SectionPanel>
               </div>
             </div>
@@ -324,7 +396,7 @@ function DashboardView({ metrics, movies, services, users, bookings, topMovies }
 
       {/* Top movies + system counts */}
       <div className="content-grid">
-        <SectionPanel title="Top Movies Today" description="Ranked by tickets sold from today's Supabase showtimes.">
+        <SectionPanel title="Top Now Showing Movies" description="Ranked by tickets sold from the active movie board.">
           {topMovies.length ? (
             <div className="list-stack">
               {topMovies.map((m, i) => (
@@ -344,7 +416,7 @@ function DashboardView({ metrics, movies, services, users, bookings, topMovies }
               ))}
             </div>
           ) : (
-            <EmptyState icon={Film} message="No showtimes found for today." />
+            <EmptyState icon={Film} message="No now showing movies found." />
           )}
         </SectionPanel>
 

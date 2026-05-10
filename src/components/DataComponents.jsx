@@ -38,9 +38,15 @@ const formatOpts = [
   { value: 'IMAX', label: 'IMAX' },
 ];
 
-export function MoviesTable({ movies, onStatusChange, onDelete, compact }) {
+export function MoviesTable({
+  movies,
+  onStatusChange,
+  onDelete,
+  compact,
+  emptyMessage = 'No movies found in the schedule.',
+}) {
   if (!movies.length) {
-    return <EmptyState icon={Film} message="No showtimes found for today." />;
+    return <EmptyState icon={Film} message={emptyMessage} />;
   }
 
   return (
@@ -50,7 +56,7 @@ export function MoviesTable({ movies, onStatusChange, onDelete, compact }) {
           <tr>
             <th>Movie</th>
             <th>Venue</th>
-            <th>Time</th>
+            <th>Added</th>
             <th>Sold</th>
             <th>Status</th>
             {onDelete ? <th /> : null}
@@ -89,7 +95,10 @@ export function MoviesTable({ movies, onStatusChange, onDelete, compact }) {
                 </span>
               </td>
               <td>
-                <span>{movie.showTime}</span>
+                <div className="table-cell-stack">
+                  <strong>{movie.showDate}</strong>
+                  <span>{movie.showTime}</span>
+                </div>
               </td>
               <td>
                 <span>{movie.ticketsSold} tickets</span>
