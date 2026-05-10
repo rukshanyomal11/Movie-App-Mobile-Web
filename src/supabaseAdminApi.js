@@ -527,7 +527,7 @@ function formatDate(value) {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-  }).format(new Date(`${value}T00:00:00`));
+  }).format(new Date(value.includes('T') ? value : `${value}T00:00:00`));
 }
 
 function formatDateTime(value) {
