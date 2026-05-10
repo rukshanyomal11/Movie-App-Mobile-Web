@@ -57,11 +57,17 @@ export function InputField({ label, id, value, onChange, placeholder, type = 'te
   );
 }
 
-export function SelectField({ label, id, value, onChange, options }) {
+export function SelectField({ label, id, value, onChange, options, disabled, placeholder }) {
   return (
     <div className="field-group">
-      <label htmlFor={id}>{label}</label>
-      <select id={id} value={value} onChange={e => onChange(e.target.value)}>
+      {label && <label htmlFor={id}>{label}</label>}
+      <select 
+        id={id} 
+        value={value} 
+        onChange={e => onChange(e.target.value)}
+        disabled={disabled}
+      >
+        {placeholder && <option value="">{placeholder}</option>}
         {options.map(opt => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}

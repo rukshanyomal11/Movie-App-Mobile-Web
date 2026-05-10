@@ -610,6 +610,12 @@ h1, h2, h3, h4 { margin: 0; }
 .field-group input::placeholder { color: var(--text-dim); }
 .field-group select option { background: #0d1020; color: var(--text); }
 
+/* Global select option styling for better browser compatibility in dark mode */
+select option {
+  background-color: #0d1020;
+  color: #f0f4ff;
+}
+
 .form-grid {
   display: grid;
   gap: 1rem;

@@ -1,20 +1,38 @@
-import { useState, useMemo } from 'react';
-import { SectionPanel, EmptyState } from './UI';
-import { Grid, Calendar } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { SelectField, SectionPanel, EmptyState } from './UI';
+import { Grid, Calendar, Filter } from 'lucide-react';
 
 export function SeatMapsView({ movies, bookings }) {
+  const [selectedDate, setSelectedDate] = useState('');
   const [selectedShowtimeId, setSelectedShowtimeId] = useState('');
 
-  // Group movies by title and date
-  const showtimes = useMemo(() => {
-    return movies.filter(m => m.status === 'now_showing' || m.status === 'featured').map(m => ({
-      ...m,
-      label: `${m.title} — ${m.showDate} at ${m.showTime} (${m.hall})`
-    }));
+  // Extract all unique dates from the movie schedule (including past dates)
+  const availableDates = useMemo(() => {
+    const dates = new Set(movies.map(m => m.showDateValue || m.showDate));
+    // Sort dates descending (newest first)
+    return Array.from(dates)
+      .sort((a, b) => b.localeCompare(a))
+      .map(d => ({ value: d, label: d }));
   }, [movies]);
 
-  // Find the selected showtime
-  const selectedShowtime = showtimes.find(s => s.id === selectedShowtimeId);
+  // When the selected date changes, clear the selected showtime
+  useEffect(() => {
+    setSelectedShowtimeId('');
+  }, [selectedDate]);
+
+  // Filter showtimes based on the selected date
+  const filteredShowtimes = useMemo(() => {
+    if (!selectedDate) return [];
+    return movies
+      .filter(m => (m.showDateValue || m.showDate) === selectedDate)
+      .map(m => ({
+        value: m.id,
+        label: `${m.title} — ${m.showTime} (${m.hall}) [${m.status.replace('_', ' ')}]`
+      }));
+  }, [movies, selectedDate]);
+
+  // Find the selected showtime object
+  const selectedShowtime = movies.find(s => s.id === selectedShowtimeId);
 
   // Extract booked seats for the selected showtime
   const bookedSeats = useMemo(() => {
@@ -42,21 +60,26 @@ export function SeatMapsView({ movies, bookings }) {
   const cols = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
   return (
-    <SectionPanel title="Seat Maps" description="Select a showtime to view live booked seats." icon={Grid}>
-      <div style={{ marginBottom: '1.5rem' }}>
-        <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-          Select Showtime
-        </label>
-        <select 
-          className="form-input" 
-          value={selectedShowtimeId} 
-          onChange={(e) => setSelectedShowtimeId(e.target.value)}
-        >
-          <option value="">-- Choose a showtime --</option>
-          {showtimes.map(s => (
-            <option key={s.id} value={s.id}>{s.label}</option>
-          ))}
-        </select>
+    <SectionPanel title="Seat Maps" description="Select a date, then choose a showtime to view booked seats." icon={Grid}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem', background: 'var(--bg-2)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--line)' }}>
+        <SelectField
+          id="sm-date"
+          label="1. Select Date"
+          value={selectedDate}
+          onChange={setSelectedDate}
+          options={availableDates}
+          placeholder="-- Choose a date --"
+        />
+
+        <SelectField
+          id="sm-movie"
+          label="2. Select Showtime"
+          value={selectedShowtimeId}
+          onChange={setSelectedShowtimeId}
+          options={filteredShowtimes}
+          disabled={!selectedDate}
+          placeholder={selectedDate ? '-- Choose a movie --' : '-- Select date first --'}
+        />
       </div>
 
       {selectedShowtime ? (
@@ -113,7 +136,7 @@ export function SeatMapsView({ movies, bookings }) {
                           border: isBooked ? 'none' : '1px solid var(--line)',
                           cursor: 'default',
                           transition: 'all 0.2s ease',
-                          opacity: (col === 5) ? 1 : 1, // Optional: add visual gap after col 5
+                          opacity: 1, 
                           marginRight: col === 5 ? '1rem' : 0
                         }}
                         title={`${seatLabel} ${isBooked ? '(Booked)' : '(Available)'}`}
@@ -129,7 +152,7 @@ export function SeatMapsView({ movies, bookings }) {
           </div>
         </div>
       ) : (
-        <EmptyState icon={Grid} message="Please select a showtime above to view the seat map." />
+        <EmptyState icon={Grid} message="Please select a date and showtime above to view the seat map." />
       )}
     </SectionPanel>
   );
