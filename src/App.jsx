@@ -7,6 +7,7 @@ import {
 } from './supabaseAdminApi';
 import { getSupabaseConfigError, hasSupabaseConfig } from './supabaseClient';
 
+
 import { Sidebar }                              from './components/Sidebar.jsx';
 import { PageState, SectionPanel, EmptyState }  from './components/UI.jsx';
 import { LoginScreen, ConfigScreen }             from './components/LoginScreen.jsx';
@@ -15,6 +16,7 @@ import {
   MovieForm, ServiceForm, formatCurrency,
 } from './components/DataComponents.jsx';
 import { TMDBSearch } from './components/TMDBSearch.jsx';
+import { SeatMapsView } from './components/SeatMapsView.jsx';
 
 import {
   Film, Ticket, Users, TrendingUp, RefreshCw,
@@ -46,7 +48,7 @@ function getTodayLabel() {
 }
 
 function getViewTitle(v) {
-  const map = { dashboard: 'Dashboard', movies: 'Movie Schedule', services: 'Services', users: 'App Users', bookings: 'Bookings', database: 'Database' };
+  const map = { dashboard: 'Dashboard', movies: 'Movie Schedule', services: 'Services', users: 'App Users', bookings: 'Bookings', 'seat-maps': 'Seat Maps', database: 'Database' };
   return map[v] || v;
 }
 
@@ -368,6 +370,9 @@ export default function App() {
             <SectionPanel title="All Bookings" description="Live booking and seat data from Supabase.">
               <BookingsTable bookings={bookings} />
             </SectionPanel>
+          )}
+          {activeView === 'seat-maps' && (
+            <SeatMapsView movies={movies} bookings={bookings} />
           )}
           {activeView === 'database' && <DatabaseView />}
         </main>
