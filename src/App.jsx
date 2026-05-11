@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import {
+  Film, Ticket, Users, TrendingUp, RefreshCw,
+  Calendar, Database, CheckCircle2, AlertCircle,
+} from 'lucide-react';
+
 import {
   createMovieSchedule, createService, fetchDashboardData,
   getCurrentSession, loadAdminProfile, signInAdmin, signOutAdmin,
@@ -8,84 +12,25 @@ import {
 } from './supabaseAdminApi';
 import { getSupabaseConfigError, hasSupabaseConfig } from './supabaseClient';
 
-
 import { Sidebar }                              from './components/Sidebar.jsx';
+import { Topbar }                               from './components/Topbar.jsx';
 import { PageState, SectionPanel, EmptyState }  from './components/UI.jsx';
 import { LoginScreen, ConfigScreen }             from './components/LoginScreen.jsx';
-import {
-  MoviesTable, ServicesTable, UsersTable, BookingsTable,
-  MovieForm, ServiceForm, formatCurrency,
-} from './components/DataComponents.jsx';
-import { TMDBSearch } from './components/TMDBSearch.jsx';
-import { SeatMapsView } from './components/SeatMapsView.jsx';
+import { formatCurrency }                        from './components/DataComponents.jsx';
+
+import { MoviesView }    from './components/MoviesView.jsx';
+import { ServicesView }  from './components/ServicesView.jsx';
+import { UsersView }     from './components/UsersView.jsx';
+import { BookingsView }  from './components/BookingsView.jsx';
+import { SeatMapsView }  from './components/SeatMapsView.jsx';
+import { DashboardView } from './components/DashboardView.jsx';
+import { DatabaseView }  from './components/DatabaseView.jsx';
 
 import {
-  Film, Ticket, Users, TrendingUp, RefreshCw,
-  Calendar, Database, CheckCircle2, AlertCircle,
-} from 'lucide-react';
+  emptyMovieForm, emptyServiceForm, movieBoardFilters,
+  getErrorMessage, matchesMovieBoardFilter, getMoviesEmptyMessage
+} from './utils/dashboardUtils';
 
-// ── CONSTANTS ─────────────────────────────────────────────────────────────────
-const emptyMovieForm = {
-  title: '', genre: '', language: '', theaterName: '', city: '',
-  hall: '', format: '2D', showTime: '', ticketPrice: '', status: 'now_showing',
-  posterUrl: '', tmdbId: '',
-};
-const emptyServiceForm = { name: '', category: '', branch: '', price: '', status: 'active' };
-const movieBoardFilters = [
-  { value: 'now_showing', label: 'Now Showing' },
-  { value: 'upcoming', label: 'Upcoming' },
-  { value: 'paused', label: 'Paused' },
-  { value: 'all', label: 'All' },
-];
-
-function getErrorMessage(e) {
-  if (!e) return 'Unexpected error.';
-  if (typeof e === 'string') return e;
-  return e.message || 'Unexpected error.';
-}
-
-function getTodayLabel() {
-  return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(new Date());
-}
-
-function getViewTitle(v) {
-  const map = { dashboard: 'Dashboard', movies: 'Movie Schedule', services: 'Services', users: 'App Users', bookings: 'Bookings', 'seat-maps': 'Seat Maps', database: 'Database' };
-  return map[v] || v;
-}
-
-function matchesMovieBoardFilter(movie, filter) {
-  if (filter === 'all') {
-    return true;
-  }
-
-  if (filter === 'now_showing') {
-    return ['now_showing', 'featured'].includes(movie.status) && movie.showtimeStatus !== 'cancelled';
-  }
-
-  if (filter === 'paused') {
-    return movie.status === 'paused' || movie.showtimeStatus === 'cancelled';
-  }
-
-  return movie.status === filter;
-}
-
-function getMoviesEmptyMessage(filter) {
-  if (filter === 'now_showing') {
-    return 'No now showing movies in the schedule.';
-  }
-
-  if (filter === 'upcoming') {
-    return 'No upcoming movies in the schedule.';
-  }
-
-  if (filter === 'paused') {
-    return 'No paused movies in the schedule.';
-  }
-
-  return 'No movies found in the schedule.';
-}
-
-// ── APP ───────────────────────────────────────────────────────────────────────
 export default function App() {
   const [session, setSession]           = useState(null);
   const [adminProfile, setAdminProfile] = useState(null);
@@ -94,11 +39,12 @@ export default function App() {
   const [users, setUsers]               = useState([]);
   const [bookings, setBookings]         = useState([]);
   const [activeView, setActiveView]     = useState('dashboard');
-  const [notice, setNotice]             = useState(null); // { type, msg }
+  const [notice, setNotice]             = useState(null);
   const [loginForm, setLoginForm]       = useState({ email: '', password: '' });
   const [loginError, setLoginError]     = useState('');
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [isSyncing, setIsSyncing]       = useState(false);
+  
   const [movieForm, setMovieForm]       = useState(emptyMovieForm);
   const [serviceForm, setServiceForm]   = useState(emptyServiceForm);
   const [movieBoardFilter, setMovieBoardFilter] = useState('now_showing');
@@ -109,6 +55,10 @@ export default function App() {
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [userPage, setUserPage] = useState(1);
   const usersPerPage = 6;
+
+  const [bookingDate, setBookingDate] = useState('');
+  const [bookingMovieTitle, setBookingMovieTitle] = useState('');
+  const [bookingShowtimeId, setBookingShowtimeId] = useState('');
 
   // Auto-clear notice
   useEffect(() => {
@@ -136,7 +86,6 @@ export default function App() {
     return () => { ignore = true; sub.unsubscribe(); };
   }, []);
 
-  // Load dashboard data
   const refreshDashboard = useCallback(async () => {
     setIsSyncing(true);
     try {
@@ -150,7 +99,6 @@ export default function App() {
     }
   }, []);
 
-  // Hydrate admin profile on login
   useEffect(() => {
     if (!session?.user) {
       setAdminProfile(null); setMovies([]); setServices([]); setUsers([]); setBookings([]);
@@ -161,7 +109,7 @@ export default function App() {
       setIsBootstrapping(true); setLoginError('');
       try {
         const profile = await loadAdminProfile(session.user);
-        if (!ignore) { setAdminProfile(profile); setNotice({ type: 'success', msg: 'Connected to the Supabase admin database.' }); }
+        if (!ignore) { setAdminProfile(profile); }
       } catch (e) {
         if (!ignore) { await signOutAdmin().catch(() => {}); setLoginError(getErrorMessage(e)); }
       } finally {
@@ -176,192 +124,101 @@ export default function App() {
     if (adminProfile?.id) refreshDashboard();
   }, [adminProfile?.id, refreshDashboard]);
 
-  // Metrics
+  // Derived State (Metrics, Filters, etc.)
   const metrics = useMemo(() => {
     const liveMovies    = movies.filter((movie) => matchesMovieBoardFilter(movie, 'now_showing')).length;
-    const activeServices = services.filter(s => s.status === 'active').length;
     const activeUsers   = users.filter(u => u.status === 'active').length;
     const revenue       = bookings.filter(b => b.paymentStatus === 'paid').reduce((t, b) => t + b.total, 0);
     return [
-      { label: 'Now Showing',     value: `${liveMovies}`,         hint: 'Movies that stay live until paused or deleted', icon: Film },
-      { label: 'Total Bookings',  value: `${bookings.length}`,    hint: 'All booking records',       icon: Ticket },
-      { label: 'Mobile Users',    value: `${activeUsers}`,        hint: 'Active customer accounts',  icon: Users },
-      { label: 'Paid Revenue',    value: formatCurrency(revenue), hint: 'Confirmed paid bookings',   icon: TrendingUp },
+      { label: 'Now Showing',    value: `${liveMovies}`,         icon: Film,        hint: 'Movies that stay live until paused' },
+      { label: 'Total Bookings', value: `${bookings.length}`,    icon: Ticket,      hint: 'All booking records' },
+      { label: 'Mobile Users',   value: `${activeUsers}`,        icon: Users,       hint: 'Active customer accounts' },
+      { label: 'Paid Revenue',   value: formatCurrency(revenue), icon: TrendingUp,  hint: 'Confirmed paid bookings' },
     ];
-  }, [movies, services, users, bookings]);
+  }, [movies, users, bookings]);
 
-  const visibleMovies = useMemo(
-    () => movies.filter((movie) => matchesMovieBoardFilter(movie, movieBoardFilter)),
-    [movies, movieBoardFilter],
-  );
-  const topMovies = useMemo(
-    () =>
-      [...movies]
-        .filter((movie) => matchesMovieBoardFilter(movie, 'now_showing'))
-        .sort((a, b) => b.ticketsSold - a.ticketsSold)
-        .slice(0, 5),
-    [movies],
-  );
-
+  const visibleMovies = useMemo(() => movies.filter(m => matchesMovieBoardFilter(m, movieBoardFilter)), [movies, movieBoardFilter]);
+  const topMovies = useMemo(() => [...movies].filter(m => matchesMovieBoardFilter(m, 'now_showing')).sort((a, b) => b.ticketsSold - a.ticketsSold).slice(0, 5), [movies]);
+  
   const filteredUsers = useMemo(() => {
-    if (selectedUserId) {
-      return users.filter(u => u.id === selectedUserId);
-    }
-    return users.filter(u => 
-      u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(userSearchQuery.toLowerCase())
-    );
+    if (selectedUserId) return users.filter(u => u.id === selectedUserId);
+    return users.filter(u => u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) || u.email.toLowerCase().includes(userSearchQuery.toLowerCase()));
   }, [users, userSearchQuery, selectedUserId]);
 
   const totalUserPages = Math.ceil(filteredUsers.length / usersPerPage);
-  const paginatedUsers = useMemo(() => {
-    const start = (userPage - 1) * usersPerPage;
-    return filteredUsers.slice(start, start + usersPerPage);
-  }, [filteredUsers, userPage]);
-
-  // Reset page when search changes
-  useEffect(() => {
-    setUserPage(1);
-  }, [userSearchQuery]);
-
+  const paginatedUsers = useMemo(() => filteredUsers.slice((userPage - 1) * usersPerPage, userPage * usersPerPage), [filteredUsers, userPage]);
+  
   const userSuggestions = useMemo(() => {
     if (!userSearchQuery.trim() || !showSuggestions) return [];
-    
-    const matches = users.filter(u => 
-      u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(userSearchQuery.toLowerCase())
-    );
-
-    // If there's only one match and it's exactly what's in the input, hide suggestions
-    if (matches.length === 1 && (
-      matches[0].name.toLowerCase() === userSearchQuery.toLowerCase() ||
-      matches[0].email.toLowerCase() === userSearchQuery.toLowerCase()
-    )) {
-      return [];
-    }
-
+    const matches = users.filter(u => u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) || u.email.toLowerCase().includes(userSearchQuery.toLowerCase()));
+    if (matches.length === 1 && (matches[0].name.toLowerCase() === userSearchQuery.toLowerCase() || matches[0].email.toLowerCase() === userSearchQuery.toLowerCase())) return [];
     return matches.slice(0, 5);
   }, [users, userSearchQuery, showSuggestions]);
 
-  // Handlers
-  async function handleLogin(e) {
-    e.preventDefault(); setLoginError('');
-    try { await signInAdmin(loginForm); } catch (err) { setLoginError(getErrorMessage(err)); }
-  }
+  const availableBookingDates = useMemo(() => Array.from(new Set(movies.map(m => m.showDateValue || m.showDate))).sort((a, b) => b.localeCompare(a)).map(d => ({ value: d, label: d })), [movies]);
+  const availableBookingMovies = useMemo(() => !bookingDate ? [] : Array.from(new Set(movies.filter(m => (m.showDateValue || m.showDate) === bookingDate).map(m => m.title))).sort().map(t => ({ value: t, label: t })), [movies, bookingDate]);
+  const availableBookingShowtimes = useMemo(() => !bookingDate || !bookingMovieTitle ? [] : movies.filter(m => (m.showDateValue || m.showDate) === bookingDate && m.title === bookingMovieTitle).map(m => ({ value: m.id, label: `${m.city} — ${m.branch} ${m.hall} (${m.showTime})` })), [movies, bookingDate, bookingMovieTitle]);
+  const filteredBookings = useMemo(() => {
+    let res = [...bookings];
+    if (bookingShowtimeId) res = res.filter(b => b.showtimeId === bookingShowtimeId);
+    else if (bookingMovieTitle) {
+      const stIds = movies.filter(m => (m.showDateValue || m.showDate) === bookingDate && m.title === bookingMovieTitle).map(m => m.id);
+      res = res.filter(b => stIds.includes(b.showtimeId));
+    } else if (bookingDate) {
+      const stIds = movies.filter(m => (m.showDateValue || m.showDate) === bookingDate).map(m => m.id);
+      res = res.filter(b => stIds.includes(b.showtimeId));
+    }
+    return res;
+  }, [bookings, movies, bookingDate, bookingMovieTitle, bookingShowtimeId]);
 
-  async function handleLogout() {
-    try { await signOutAdmin(); setActiveView('dashboard'); setNotice({ type: 'success', msg: 'Signed out.' }); }
-    catch (e) { setNotice({ type: 'error', msg: getErrorMessage(e) }); }
-  }
+  // Effect resets
+  useEffect(() => setUserPage(1), [userSearchQuery]);
+  useEffect(() => { setBookingMovieTitle(''); setBookingShowtimeId(''); }, [bookingDate]);
+  useEffect(() => { setBookingShowtimeId(''); }, [bookingMovieTitle]);
+
+  // Handlers
+  async function handleLogin(e) { e.preventDefault(); setLoginError(''); try { await signInAdmin(loginForm); } catch (err) { setLoginError(getErrorMessage(err)); } }
+  async function handleLogout() { try { await signOutAdmin(); setActiveView('dashboard'); setNotice({ type: 'success', msg: 'Signed out.' }); } catch (e) { setNotice({ type: 'error', msg: getErrorMessage(e) }); } }
 
   async function handleMovieSubmit(e) {
     e.preventDefault();
     const p = { ...movieForm, title: movieForm.title.trim(), ticketPrice: Number(movieForm.ticketPrice) };
-    if (!p.title || !p.genre || !p.language || !p.theaterName || !p.city || !p.hall || !p.showTime || !p.ticketPrice) {
-      setNotice({ type: 'error', msg: 'Fill in all movie fields before saving.' }); return;
-    }
+    if (!p.title || !p.genre || !p.language || !p.theaterName || !p.city || !p.hall || !p.showTime || !p.ticketPrice) { setNotice({ type: 'error', msg: 'Fill in all fields.' }); return; }
     try {
-      if (editingMovie) {
-        await updateMovieSchedule(editingMovie.id, editingMovie.movieId, p, adminProfile.id);
-        setNotice({ type: 'success', msg: `Movie "${p.title}" updated successfully.` });
-      } else {
-        await createMovieSchedule(p, adminProfile.id);
-        setNotice({ type: 'success', msg: `Movie "${p.title}" saved to Supabase.` });
-      }
-      setMovieForm(emptyMovieForm);
-      setEditingMovie(null);
-      await refreshDashboard();
+      if (editingMovie) await updateMovieSchedule(editingMovie.id, editingMovie.movieId, p, adminProfile.id);
+      else await createMovieSchedule(p, adminProfile.id);
+      setMovieForm(emptyMovieForm); setEditingMovie(null); await refreshDashboard();
+      setNotice({ type: 'success', msg: 'Movie schedule saved.' });
     } catch (err) { setNotice({ type: 'error', msg: getErrorMessage(err) }); }
   }
 
-  function handleEditMovie(movie) {
-    setEditingMovie(movie);
-    setMovieForm({
-      title: movie.title,
-      genre: movie.genre,
-      language: movie.language,
-      theaterName: movie.branch,
-      city: movie.city,
-      hall: movie.hall,
-      format: movie.format,
-      showTime: movie.showTimeValue ? movie.showTimeValue.slice(0, 5) : '', // HH:mm
-      ticketPrice: String(movie.ticketPrice),
-      status: movie.status,
-      posterUrl: movie.posterUrl,
-    });
-    // Scroll to form
+  function handleEditMovie(m) { 
+    setEditingMovie(m); 
+    setMovieForm({ ...m, theaterName: m.branch, showTime: m.showTimeValue ? m.showTimeValue.slice(0, 5) : '', ticketPrice: String(m.ticketPrice) });
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  function handleCancelEdit() {
-    setEditingMovie(null);
-    setMovieForm(emptyMovieForm);
   }
 
   async function handleServiceSubmit(e) {
     e.preventDefault();
     const p = { ...serviceForm, price: Number(serviceForm.price) };
-    if (!p.name || !p.category || !p.branch || !p.price) {
-      setNotice({ type: 'error', msg: 'Fill in all service fields.' }); return;
-    }
-    try {
-      await createService(p, adminProfile.id);
-      setServiceForm(emptyServiceForm); await refreshDashboard();
-      setNotice({ type: 'success', msg: `Service "${p.name}" saved.` });
-    } catch (err) { setNotice({ type: 'error', msg: getErrorMessage(err) }); }
+    if (!p.name || !p.category || !p.branch || !p.price) { setNotice({ type: 'error', msg: 'Fill in all fields.' }); return; }
+    try { await createService(p, adminProfile.id); setServiceForm(emptyServiceForm); await refreshDashboard(); setNotice({ type: 'success', msg: 'Service saved.' }); }
+    catch (err) { setNotice({ type: 'error', msg: getErrorMessage(err) }); }
   }
 
-  async function handleMovieStatusChange(id, status) {
-    try { await updateMovieStatus(id, status, adminProfile.id); await refreshDashboard(); setNotice({ type: 'success', msg: 'Movie status updated.' }); }
-    catch (e) { setNotice({ type: 'error', msg: getErrorMessage(e) }); }
-  }
+  async function handleMovieStatusChange(id, status) { try { await updateMovieStatus(id, status, adminProfile.id); await refreshDashboard(); } catch (e) { setNotice({ type: 'error', msg: getErrorMessage(e) }); } }
+  async function handleServiceStatusChange(id, status) { try { await updateServiceStatus(id, status, adminProfile.id); await refreshDashboard(); } catch (e) { setNotice({ type: 'error', msg: getErrorMessage(e) }); } }
+  async function handleDeleteMovie(sId, mId, title) { try { await deleteMovieSchedule(sId, mId, title, adminProfile.id); await refreshDashboard(); } catch (e) { setNotice({ type: 'error', msg: getErrorMessage(e) }); } }
 
-  async function handleServiceStatusChange(id, status) {
-    try { await updateServiceStatus(id, status, adminProfile.id); await refreshDashboard(); setNotice({ type: 'success', msg: 'Service status updated.' }); }
-    catch (e) { setNotice({ type: 'error', msg: getErrorMessage(e) }); }
-  }
+  if (!hasSupabaseConfig) return <ConfigScreen message={getSupabaseConfigError()} />;
+  if (!session) return <LoginScreen form={loginForm} error={loginError} onChange={setLoginForm} onSubmit={handleLogin} isLoading={isBootstrapping} />;
+  if (isBootstrapping && !adminProfile) return <PageState title="Connecting" body="Loading admin account…" />;
 
-  async function handleDeleteMovie(showtimeId, movieId, title) {
-    try {
-      await deleteMovieSchedule(showtimeId, movieId, title, adminProfile.id);
-      await refreshDashboard();
-      setNotice({ type: 'success', msg: `"${title}" deleted successfully.` });
-    } catch (e) {
-      setNotice({ type: 'error', msg: getErrorMessage(e) });
-    }
-  }
-
-  // ── RENDER GUARDS ──────────────────────────────────────────────────────────
-  if (!hasSupabaseConfig)     return <ConfigScreen message={getSupabaseConfigError()} />;
-  if (!session)               return <LoginScreen form={loginForm} error={loginError} onChange={setLoginForm} onSubmit={handleLogin} isLoading={isBootstrapping} />;
-  if (isBootstrapping && !adminProfile) return <PageState title="Connecting to Supabase" body="Loading the admin account…" />;
-
-  // ── MAIN LAYOUT ────────────────────────────────────────────────────────────
   return (
     <div className="admin-app">
       <Sidebar activeView={activeView} onNavigate={setActiveView} adminProfile={adminProfile} onLogout={handleLogout} />
-
       <div className="main-shell">
-        {/* Topbar */}
-        <header className="topbar">
-          <div className="topbar__left">
-            <p className="topbar__eyebrow">Supabase Admin Workspace</p>
-            <h2 className="topbar__title">{getViewTitle(activeView)}</h2>
-          </div>
-          <div className="topbar__actions">
-            <div className="topbar__date">
-              <Calendar size={13} />
-              <span>Today</span>
-              <strong>{getTodayLabel()}</strong>
-            </div>
-            <button type="button" className="btn btn-ghost" onClick={refreshDashboard} disabled={isSyncing}>
-              <RefreshCw size={14} style={{ animation: isSyncing ? 'spin 0.8s linear infinite' : 'none' }} />
-              {isSyncing ? 'Refreshing…' : 'Refresh'}
-            </button>
-          </div>
-        </header>
-
-        {/* Notice */}
+        <Topbar activeView={activeView} isSyncing={isSyncing} refreshDashboard={refreshDashboard} />
         {notice && (
           <div style={{ padding: '0 1.75rem' }}>
             <div className={`notice-bar notice-bar--${notice.type}`}>
@@ -370,271 +227,16 @@ export default function App() {
             </div>
           </div>
         )}
-
-        {/* Views */}
         <main className="page-content">
-          {activeView === 'dashboard' && (
-            <DashboardView metrics={metrics} movies={movies} services={services} users={users} bookings={bookings} topMovies={topMovies} />
-          )}
-          {activeView === 'movies' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {/* TMDB Search */}
-              <SectionPanel
-                title="Search Movie from TMDB"
-                description="Search a movie to auto-fill the form below — powered by The Movie Database."
-              >
-                <TMDBSearch
-                  onSelect={({ title, genre, language, posterPath, tmdbId }) =>
-                    setMovieForm(cur => ({
-                      ...cur,
-                      ...(title    ? { title }    : {}),
-                      ...(genre    ? { genre }    : {}),
-                      ...(language ? { language } : {}),
-                      ...(tmdbId   ? { tmdbId }   : {}),
-                      posterUrl: posterPath ? `https://image.tmdb.org/t/p/w342${posterPath}` : '',
-                    }))
-                  }
-                />
-              </SectionPanel>
-
-              {/* Form + Schedule */}
-              <div className="content-grid--wide" style={{ display: 'grid', gap: '1.25rem' }}>
-                <SectionPanel 
-                  title={editingMovie ? "Edit Movie Schedule" : "Add Movie Schedule"} 
-                  description={editingMovie ? "Update the existing schedule details." : "Fill in the remaining details and save to Supabase."}
-                  highlight={!!editingMovie}
-                >
-                  <MovieForm 
-                    form={movieForm} 
-                    onChange={setMovieForm} 
-                    onSubmit={handleMovieSubmit} 
-                    isEditing={!!editingMovie}
-                    onCancel={handleCancelEdit}
-                  />
-                </SectionPanel>
-                <SectionPanel
-                  title="Today's Schedule"
-                  description="Status-based movie board. A movie stays here on future days until the admin pauses or deletes it."
-                  action={(
-                    <div className="filter-chip-group" role="tablist" aria-label="Movie schedule filters">
-                      {movieBoardFilters.map((filter) => (
-                        <button
-                          key={filter.value}
-                          type="button"
-                          className={`filter-chip ${movieBoardFilter === filter.value ? 'filter-chip--active' : ''}`}
-                          onClick={() => setMovieBoardFilter(filter.value)}
-                        >
-                          {filter.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                >
-                  <MoviesTable
-                    movies={visibleMovies}
-                    onStatusChange={handleMovieStatusChange}
-                    onDelete={handleDeleteMovie}
-                    onEdit={handleEditMovie}
-                    editingId={editingMovie?.id}
-                    emptyMessage={getMoviesEmptyMessage(movieBoardFilter)}
-                  />
-                </SectionPanel>
-              </div>
-            </div>
-          )}
-          {activeView === 'services' && (
-            <div className="content-grid--wide" style={{ display: 'grid', gap: '1.25rem' }}>
-              <SectionPanel title="Create Service" description="Add cinema services to the shared services table.">
-                <ServiceForm form={serviceForm} onChange={setServiceForm} onSubmit={handleServiceSubmit} />
-              </SectionPanel>
-              <SectionPanel title="Current Services" description="Live data from the services table in Supabase.">
-                <ServicesTable services={services} onStatusChange={handleServiceStatusChange} />
-              </SectionPanel>
-            </div>
-          )}
-            {activeView === 'users' && (
-              <div className="content-grid--wide">
-                <SectionPanel 
-                  title="Customer Accounts" 
-                  description="Manage registered mobile app users."
-                  action={
-                    <div className="search-bar" style={{ width: '300px', position: 'relative' }}>
-                      <Search size={16} style={{ position: 'absolute', marginLeft: '10px', marginTop: '12px', color: 'var(--text-dim)' }} />
-                      <input 
-                        type="text" 
-                        placeholder="Search by name or email..." 
-                        value={userSearchQuery}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setUserSearchQuery(val);
-                          setShowSuggestions(true);
-                          if (!val) setSelectedUserId(null);
-                        }}
-                        onFocus={() => setShowSuggestions(true)}
-                        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                        style={{ paddingLeft: '35px' }}
-                      />
-                      
-                      {userSuggestions.length > 0 && (
-                        <div className="search-suggestions">
-                          {userSuggestions.map(user => (
-                            <div 
-                              key={user.id}
-                              className="suggestion-item"
-                              onClick={() => {
-                                setUserSearchQuery(user.name);
-                                setSelectedUserId(user.id);
-                                setShowSuggestions(false);
-                              }}
-                            >
-                              <div className="suggestion-item__name">{user.name}</div>
-                              <div className="suggestion-item__email">{user.email}</div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  }
-                >
-                  <UsersTable users={paginatedUsers} />
-                  
-                  {totalUserPages > 1 && (
-                    <div className="pagination-controls" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginTop: '1.5rem', borderTop: '1px solid var(--line)', paddingTop: '1.5rem' }}>
-                      <button 
-                        className="btn btn-ghost" 
-                        disabled={userPage === 1}
-                        onClick={() => setUserPage(p => Math.max(1, p - 1))}
-                      >
-                        <ChevronLeft size={16} /> Previous
-                      </button>
-                      <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                        Page <strong>{userPage}</strong> of {totalUserPages}
-                      </span>
-                      <button 
-                        className="btn btn-ghost" 
-                        disabled={userPage === totalUserPages}
-                        onClick={() => setUserPage(p => Math.min(totalUserPages, p + 1))}
-                      >
-                        Next <ChevronRight size={16} />
-                      </button>
-                    </div>
-                  )}
-                </SectionPanel>
-              </div>
-            )}
-            {activeView === 'bookings' && (
-            <SectionPanel title="All Bookings" description="Live booking and seat data from Supabase.">
-              <BookingsTable bookings={bookings} />
-            </SectionPanel>
-          )}
-          {activeView === 'seat-maps' && (
-            <SeatMapsView movies={movies} bookings={bookings} />
-          )}
-          {activeView === 'database' && <DatabaseView />}
+          {activeView === 'dashboard' && <DashboardView metrics={metrics} movies={movies} services={services} users={users} bookings={bookings} topMovies={topMovies} />}
+          {activeView === 'movies'    && <MoviesView movieForm={movieForm} setMovieForm={setMovieForm} handleMovieSubmit={handleMovieSubmit} editingMovie={editingMovie} handleCancelEdit={() => {setEditingMovie(null); setMovieForm(emptyMovieForm);}} movieBoardFilters={movieBoardFilters} movieBoardFilter={movieBoardFilter} setMovieBoardFilter={setMovieBoardFilter} visibleMovies={visibleMovies} handleMovieStatusChange={handleMovieStatusChange} handleDeleteMovie={handleDeleteMovie} handleEditMovie={handleEditMovie} getMoviesEmptyMessage={getMoviesEmptyMessage} />}
+          {activeView === 'services'  && <ServicesView serviceForm={serviceForm} setServiceForm={setServiceForm} handleServiceSubmit={handleServiceSubmit} services={services} handleServiceStatusChange={handleServiceStatusChange} />}
+          {activeView === 'users'     && <UsersView userSearchQuery={userSearchQuery} setUserSearchQuery={setUserSearchQuery} setShowSuggestions={setShowSuggestions} userSuggestions={userSuggestions} setSelectedUserId={setSelectedUserId} paginatedUsers={paginatedUsers} totalUserPages={totalUserPages} userPage={userPage} setUserPage={setUserPage} />}
+          {activeView === 'bookings'  && <BookingsView bookingDate={bookingDate} setBookingDate={setBookingDate} availableBookingDates={availableBookingDates} bookingMovieTitle={bookingMovieTitle} setBookingMovieTitle={setBookingMovieTitle} availableBookingMovies={availableBookingMovies} bookingShowtimeId={bookingShowtimeId} setBookingShowtimeId={setBookingShowtimeId} availableBookingShowtimes={availableBookingShowtimes} filteredBookings={filteredBookings} />}
+          {activeView === 'seat-maps' && <SeatMapsView movies={movies} bookings={bookings} />}
+          {activeView === 'database'  && <DatabaseView />}
         </main>
       </div>
     </div>
-  );
-}
-
-// ── DASHBOARD VIEW ─────────────────────────────────────────────────────────────
-function DashboardView({ metrics, movies, services, users, bookings, topMovies }) {
-  return (
-    <>
-      {/* Metric cards */}
-      <section className="metric-grid">
-        {metrics.map(m => (
-          <article key={m.label} className="glass-card metric-card">
-            <div className="metric-card__header">
-              <p className="metric-card__label">{m.label}</p>
-              <div className="metric-card__icon"><m.icon size={15} /></div>
-            </div>
-            <p className="metric-card__value">{m.value}</p>
-            <p className="metric-card__hint">{m.hint}</p>
-          </article>
-        ))}
-      </section>
-
-      {/* Top movies + system counts */}
-      <div className="content-grid">
-        <SectionPanel title="Top Now Showing Movies" description="Ranked by tickets sold from the active movie board.">
-          {topMovies.length ? (
-            <div className="list-stack">
-              {topMovies.map((m, i) => (
-                <div key={m.id} className="row-card">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--gold)', minWidth: 16 }}>#{i + 1}</span>
-                    <div>
-                      <strong style={{ fontSize: '0.875rem' }}>{m.title}</strong>
-                      <p className="row-card__sub">{m.branch} · {m.hall} · {m.showTime}</p>
-                    </div>
-                  </div>
-                  <div className="row-card__meta">
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{m.ticketsSold} sold</span>
-                    <span className={`badge badge--${m.status}`}>{m.status.replace('_', ' ')}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState icon={Film} message="No now showing movies found." />
-          )}
-        </SectionPanel>
-
-        <SectionPanel title="System Counts" description="Live row counts from all Supabase tables.">
-          <div className="mini-stats">
-            {[
-              { label: 'Showtimes',  val: movies.length },
-              { label: 'Services',   val: services.length },
-              { label: 'Customers',  val: users.length },
-              { label: 'Bookings',   val: bookings.length },
-            ].map(s => (
-              <div key={s.label} className="mini-stat">
-                <strong>{s.val}</strong>
-                <span>{s.label}</span>
-              </div>
-            ))}
-          </div>
-        </SectionPanel>
-      </div>
-
-      {/* Recent bookings */}
-      <SectionPanel title="Recent Bookings" description="Latest booking activity from the shared database.">
-        <BookingsTable bookings={bookings.slice(0, 5)} compact />
-      </SectionPanel>
-    </>
-  );
-}
-
-// ── DATABASE VIEW ──────────────────────────────────────────────────────────────
-function DatabaseView() {
-  const tables = [
-    { name: 'movies',         desc: 'Movie catalogue — title, genre, language, status' },
-    { name: 'showtimes',      desc: 'Daily show schedule linked to movies and screens' },
-    { name: 'theaters',       desc: 'Theater branches across cities' },
-    { name: 'screens',        desc: 'Individual halls within each theater' },
-    { name: 'app_users',      desc: 'Mobile app customer accounts' },
-    { name: 'bookings',       desc: 'Customer booking records' },
-    { name: 'booking_seats',  desc: 'Individual seat labels per booking' },
-    { name: 'services',       desc: 'Cinema service offerings (food, packages, etc.)' },
-    { name: 'admin_audit_logs', desc: 'Admin action history' },
-  ];
-  return (
-    <SectionPanel title="Database Schema" description="All tables used by the CineBook admin and mobile app via Supabase." icon={Database}>
-      <div className="list-stack">
-        {tables.map(t => (
-          <div key={t.name} className="row-card">
-            <div>
-              <strong style={{ fontSize: '0.875rem', fontFamily: 'monospace', color: 'var(--gold)' }}>{t.name}</strong>
-              <p className="row-card__sub">{t.desc}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="db-info" style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--line)' }}>
-        <p>Schema file: <code>shared-database/schema.sql</code></p>
-        <p>The mobile app and admin website share the same Supabase project. All reads and writes go through the same tables.</p>
-      </div>
-    </SectionPanel>
   );
 }
