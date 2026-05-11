@@ -106,6 +106,7 @@ export default function App() {
 
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState(null);
   const [userPage, setUserPage] = useState(1);
   const usersPerPage = 6;
 
@@ -203,11 +204,14 @@ export default function App() {
   );
 
   const filteredUsers = useMemo(() => {
+    if (selectedUserId) {
+      return users.filter(u => u.id === selectedUserId);
+    }
     return users.filter(u => 
       u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
       u.email.toLowerCase().includes(userSearchQuery.toLowerCase())
     );
-  }, [users, userSearchQuery]);
+  }, [users, userSearchQuery, selectedUserId]);
 
   const totalUserPages = Math.ceil(filteredUsers.length / usersPerPage);
   const paginatedUsers = useMemo(() => {
@@ -222,12 +226,21 @@ export default function App() {
 
   const userSuggestions = useMemo(() => {
     if (!userSearchQuery.trim() || !showSuggestions) return [];
-    return users
-      .filter(u => 
-        u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-        u.email.toLowerCase().includes(userSearchQuery.toLowerCase())
-      )
-      .slice(0, 5);
+    
+    const matches = users.filter(u => 
+      u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+      u.email.toLowerCase().includes(userSearchQuery.toLowerCase())
+    );
+
+    // If there's only one match and it's exactly what's in the input, hide suggestions
+    if (matches.length === 1 && (
+      matches[0].name.toLowerCase() === userSearchQuery.toLowerCase() ||
+      matches[0].email.toLowerCase() === userSearchQuery.toLowerCase()
+    )) {
+      return [];
+    }
+
+    return matches.slice(0, 5);
   }, [users, userSearchQuery, showSuggestions]);
 
   // Handlers
@@ -452,8 +465,10 @@ export default function App() {
                         placeholder="Search by name or email..." 
                         value={userSearchQuery}
                         onChange={(e) => {
-                          setUserSearchQuery(e.target.value);
+                          const val = e.target.value;
+                          setUserSearchQuery(val);
                           setShowSuggestions(true);
+                          if (!val) setSelectedUserId(null);
                         }}
                         onFocus={() => setShowSuggestions(true)}
                         onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
@@ -461,37 +476,19 @@ export default function App() {
                       />
                       
                       {userSuggestions.length > 0 && (
-                        <div className="search-suggestions" style={{ 
-                          position: 'absolute', 
-                          top: '100%', 
-                          left: 0, 
-                          right: 0, 
-                          background: 'var(--bg-2)', 
-                          border: '1px solid var(--line)', 
-                          borderRadius: '8px',
-                          marginTop: '5px',
-                          zIndex: 100,
-                          boxShadow: '0 8px 16px rgba(0,0,0,0.5)',
-                          overflow: 'hidden'
-                        }}>
+                        <div className="search-suggestions">
                           {userSuggestions.map(user => (
                             <div 
                               key={user.id}
-                              style={{ 
-                                padding: '0.75rem 1rem', 
-                                borderBottom: '1px solid var(--line)',
-                                cursor: 'pointer',
-                                transition: 'background 0.2s'
-                              }}
-                              onMouseEnter={(e) => e.target.style.background = 'var(--surface)'}
-                              onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                              className="suggestion-item"
                               onClick={() => {
                                 setUserSearchQuery(user.name);
+                                setSelectedUserId(user.id);
                                 setShowSuggestions(false);
                               }}
                             >
-                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text)' }}>{user.name}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{user.email}</div>
+                              <div className="suggestion-item__name">{user.name}</div>
+                              <div className="suggestion-item__email">{user.email}</div>
                             </div>
                           ))}
                         </div>

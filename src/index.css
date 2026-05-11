@@ -902,3 +902,46 @@ select option {
 .row--editing td {
   transition: background 0.3s ease;
 }
+
+/* -- SEARCH SUGGESTIONS -- */
+.search-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #0d1226;
+  border: 1px solid var(--line);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  margin-top: 0;
+  z-index: 1000;
+  box-shadow: 0 12px 24px rgba(0,0,0,0.6);
+  overflow: hidden;
+  animation: slideDown 0.2s ease;
+}
+
+.suggestion-item {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.suggestion-item:last-child { border-bottom: none; }
+
+.suggestion-item:hover {
+  background: rgba(212, 175, 55, 0.1);
+  padding-left: 1.25rem;
+}
+
+.suggestion-item__name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.15rem;
+}
+
+.suggestion-item__email {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
