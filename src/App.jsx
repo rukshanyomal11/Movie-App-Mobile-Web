@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import {
   createMovieSchedule, createService, fetchDashboardData,
   getCurrentSession, loadAdminProfile, signInAdmin, signOutAdmin,
@@ -103,6 +104,11 @@ export default function App() {
   const [movieBoardFilter, setMovieBoardFilter] = useState('now_showing');
   const [editingMovie, setEditingMovie] = useState(null);
 
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [userPage, setUserPage] = useState(1);
+  const usersPerPage = 6;
+
   // Auto-clear notice
   useEffect(() => {
     if (!notice) return;
@@ -195,6 +201,34 @@ export default function App() {
         .slice(0, 5),
     [movies],
   );
+
+  const filteredUsers = useMemo(() => {
+    return users.filter(u => 
+      u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+      u.email.toLowerCase().includes(userSearchQuery.toLowerCase())
+    );
+  }, [users, userSearchQuery]);
+
+  const totalUserPages = Math.ceil(filteredUsers.length / usersPerPage);
+  const paginatedUsers = useMemo(() => {
+    const start = (userPage - 1) * usersPerPage;
+    return filteredUsers.slice(start, start + usersPerPage);
+  }, [filteredUsers, userPage]);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setUserPage(1);
+  }, [userSearchQuery]);
+
+  const userSuggestions = useMemo(() => {
+    if (!userSearchQuery.trim() || !showSuggestions) return [];
+    return users
+      .filter(u => 
+        u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+        u.email.toLowerCase().includes(userSearchQuery.toLowerCase())
+      )
+      .slice(0, 5);
+  }, [users, userSearchQuery, showSuggestions]);
 
   // Handlers
   async function handleLogin(e) {
@@ -405,12 +439,93 @@ export default function App() {
               </SectionPanel>
             </div>
           )}
-          {activeView === 'users' && (
-            <SectionPanel title="Mobile App Users" description="Customer accounts from the app_users table with booking counts.">
-              <UsersTable users={users} />
-            </SectionPanel>
-          )}
-          {activeView === 'bookings' && (
+            {activeView === 'users' && (
+              <div className="content-grid--wide">
+                <SectionPanel 
+                  title="Customer Accounts" 
+                  description="Manage registered mobile app users."
+                  action={
+                    <div className="search-bar" style={{ width: '300px', position: 'relative' }}>
+                      <Search size={16} style={{ position: 'absolute', marginLeft: '10px', marginTop: '12px', color: 'var(--text-dim)' }} />
+                      <input 
+                        type="text" 
+                        placeholder="Search by name or email..." 
+                        value={userSearchQuery}
+                        onChange={(e) => {
+                          setUserSearchQuery(e.target.value);
+                          setShowSuggestions(true);
+                        }}
+                        onFocus={() => setShowSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                        style={{ paddingLeft: '35px' }}
+                      />
+                      
+                      {userSuggestions.length > 0 && (
+                        <div className="search-suggestions" style={{ 
+                          position: 'absolute', 
+                          top: '100%', 
+                          left: 0, 
+                          right: 0, 
+                          background: 'var(--bg-2)', 
+                          border: '1px solid var(--line)', 
+                          borderRadius: '8px',
+                          marginTop: '5px',
+                          zIndex: 100,
+                          boxShadow: '0 8px 16px rgba(0,0,0,0.5)',
+                          overflow: 'hidden'
+                        }}>
+                          {userSuggestions.map(user => (
+                            <div 
+                              key={user.id}
+                              style={{ 
+                                padding: '0.75rem 1rem', 
+                                borderBottom: '1px solid var(--line)',
+                                cursor: 'pointer',
+                                transition: 'background 0.2s'
+                              }}
+                              onMouseEnter={(e) => e.target.style.background = 'var(--surface)'}
+                              onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                              onClick={() => {
+                                setUserSearchQuery(user.name);
+                                setShowSuggestions(false);
+                              }}
+                            >
+                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text)' }}>{user.name}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{user.email}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  }
+                >
+                  <UsersTable users={paginatedUsers} />
+                  
+                  {totalUserPages > 1 && (
+                    <div className="pagination-controls" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginTop: '1.5rem', borderTop: '1px solid var(--line)', paddingTop: '1.5rem' }}>
+                      <button 
+                        className="btn btn-ghost" 
+                        disabled={userPage === 1}
+                        onClick={() => setUserPage(p => Math.max(1, p - 1))}
+                      >
+                        <ChevronLeft size={16} /> Previous
+                      </button>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                        Page <strong>{userPage}</strong> of {totalUserPages}
+                      </span>
+                      <button 
+                        className="btn btn-ghost" 
+                        disabled={userPage === totalUserPages}
+                        onClick={() => setUserPage(p => Math.min(totalUserPages, p + 1))}
+                      >
+                        Next <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  )}
+                </SectionPanel>
+              </div>
+            )}
+            {activeView === 'bookings' && (
             <SectionPanel title="All Bookings" description="Live booking and seat data from Supabase.">
               <BookingsTable bookings={bookings} />
             </SectionPanel>
