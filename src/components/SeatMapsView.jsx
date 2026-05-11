@@ -4,6 +4,7 @@ import { Grid, Calendar, Filter } from 'lucide-react';
 
 export function SeatMapsView({ movies, bookings }) {
   const [selectedDate, setSelectedDate] = useState('');
+  const [selectedMovieTitle, setSelectedMovieTitle] = useState('');
   const [selectedShowtimeId, setSelectedShowtimeId] = useState('');
 
   // Extract all unique dates from the movie schedule (including past dates)
@@ -15,21 +16,40 @@ export function SeatMapsView({ movies, bookings }) {
       .map(d => ({ value: d, label: d }));
   }, [movies]);
 
-  // When the selected date changes, clear the selected showtime
+  // When the selected date changes, clear the selected movie and showtime
   useEffect(() => {
+    setSelectedMovieTitle('');
     setSelectedShowtimeId('');
   }, [selectedDate]);
 
-  // Filter showtimes based on the selected date
-  const filteredShowtimes = useMemo(() => {
+  // When the selected movie changes, clear the selected showtime
+  useEffect(() => {
+    setSelectedShowtimeId('');
+  }, [selectedMovieTitle]);
+
+  // Extract unique movie titles for the selected date
+  const availableMoviesForDate = useMemo(() => {
     if (!selectedDate) return [];
+    const titles = new Set(
+      movies
+        .filter(m => (m.showDateValue || m.showDate) === selectedDate)
+        .map(m => m.title)
+    );
+    return Array.from(titles)
+      .sort()
+      .map(t => ({ value: t, label: t }));
+  }, [movies, selectedDate]);
+
+  // Filter specific showtimes based on the selected date and movie title
+  const filteredShowtimes = useMemo(() => {
+    if (!selectedDate || !selectedMovieTitle) return [];
     return movies
-      .filter(m => (m.showDateValue || m.showDate) === selectedDate)
+      .filter(m => (m.showDateValue || m.showDate) === selectedDate && m.title === selectedMovieTitle)
       .map(m => ({
         value: m.id,
-        label: `${m.title} — ${m.showTime} (${m.hall}) [${m.status.replace('_', ' ')}]`
+        label: `${m.city} — ${m.theaterName || ''} ${m.hall} (${m.showTime}) [${m.status.replace('_', ' ')}]`
       }));
-  }, [movies, selectedDate]);
+  }, [movies, selectedDate, selectedMovieTitle]);
 
   // Find the selected showtime object
   const selectedShowtime = movies.find(s => s.id === selectedShowtimeId);
@@ -60,8 +80,8 @@ export function SeatMapsView({ movies, bookings }) {
   const cols = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
   return (
-    <SectionPanel title="Seat Maps" description="Select a date, then choose a showtime to view booked seats." icon={Grid}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem', background: 'var(--bg-2)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--line)' }}>
+    <SectionPanel title="Seat Maps" description="Filter by date and movie, then choose a location/hall to view booked seats." icon={Grid}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '2rem', background: 'var(--bg-2)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--line)' }}>
         <SelectField
           id="sm-date"
           label="1. Select Date"
@@ -73,12 +93,22 @@ export function SeatMapsView({ movies, bookings }) {
 
         <SelectField
           id="sm-movie"
-          label="2. Select Showtime"
+          label="2. Select Movie"
+          value={selectedMovieTitle}
+          onChange={setSelectedMovieTitle}
+          options={availableMoviesForDate}
+          disabled={!selectedDate}
+          placeholder={selectedDate ? '-- Choose a movie --' : '-- Select date first --'}
+        />
+
+        <SelectField
+          id="sm-showtime"
+          label="3. Select Location/Hall"
           value={selectedShowtimeId}
           onChange={setSelectedShowtimeId}
           options={filteredShowtimes}
-          disabled={!selectedDate}
-          placeholder={selectedDate ? '-- Choose a movie --' : '-- Select date first --'}
+          disabled={!selectedMovieTitle}
+          placeholder={selectedMovieTitle ? '-- Choose a showtime --' : '-- Select movie first --'}
         />
       </div>
 
