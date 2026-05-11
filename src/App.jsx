@@ -387,6 +387,7 @@ export default function App() {
                     onStatusChange={handleMovieStatusChange}
                     onDelete={handleDeleteMovie}
                     onEdit={handleEditMovie}
+                    editingId={editingMovie?.id}
                     emptyMessage={getMoviesEmptyMessage(movieBoardFilter)}
                   />
                 </SectionPanel>

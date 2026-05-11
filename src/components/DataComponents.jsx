@@ -43,6 +43,7 @@ export function MoviesTable({
   onStatusChange,
   onDelete,
   onEdit,
+  editingId,
   compact,
   emptyMessage = 'No movies found in the schedule.',
 }) {
@@ -65,7 +66,15 @@ export function MoviesTable({
         </thead>
         <tbody>
           {movies.map((movie) => (
-            <tr key={movie.id}>
+            <tr 
+              key={movie.id} 
+              className={movie.id === editingId ? 'row--editing' : ''}
+              style={movie.id === editingId ? { 
+                background: 'rgba(212, 175, 55, 0.08)', 
+                boxShadow: 'inset 4px 0 0 var(--gold)',
+                transition: 'all 0.3s ease'
+              } : {}}
+            >
               <td>
                 <div className="movie-cell">
                   <div className="movie-thumb">
@@ -129,7 +138,12 @@ export function MoviesTable({
                       <button
                         type="button"
                         className="btn btn-ghost"
-                        style={{ padding: '0.3rem 0.6rem', minHeight: 'unset', background: 'var(--surface-light)' }}
+                        style={{ 
+                          padding: '0.3rem 0.6rem', 
+                          minHeight: 'unset', 
+                          background: movie.id === editingId ? 'var(--gold)' : 'var(--surface-light)',
+                          color: movie.id === editingId ? 'var(--bg)' : 'inherit'
+                        }}
                         title={`Edit ${movie.title}`}
                         onClick={() => onEdit(movie)}
                       >
