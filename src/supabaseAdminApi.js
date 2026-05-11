@@ -220,6 +220,40 @@ export async function createMovieSchedule(form, adminProfileId) {
   await writeAuditLog(adminProfileId, 'movie', movie.id, 'create', `Created ${movie.title}`);
 }
 
+export async function updateMovieSchedule(showtimeId, movieId, form, adminProfileId) {
+  const theaterId = await ensureTheater(form.theaterName, form.city);
+  const screenId = await ensureScreen(theaterId, form.hall, form.format);
+
+  // Update movie
+  const { error: movieError } = await supabase
+    .from('movies')
+    .update({
+      title: form.title,
+      genre: form.genre,
+      language: form.language,
+      status: form.status,
+      poster_url: form.posterUrl || null,
+      tmdb_id: form.tmdbId || null,
+    })
+    .eq('id', movieId);
+
+  throwIfError(movieError);
+
+  // Update showtime
+  const { error: showtimeError } = await supabase
+    .from('showtimes')
+    .update({
+      screen_id: screenId,
+      start_time: form.showTime,
+      ticket_price: Number(form.ticketPrice),
+    })
+    .eq('id', showtimeId);
+
+  throwIfError(showtimeError);
+
+  await writeAuditLog(adminProfileId, 'movie', movieId, 'update', `Updated ${form.title}`);
+}
+
 export async function updateMovieStatus(movieId, nextStatus, adminProfileId) {
   const { error } = await supabase
     .from('movies')

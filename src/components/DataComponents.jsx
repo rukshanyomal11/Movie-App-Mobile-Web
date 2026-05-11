@@ -1,4 +1,4 @@
-import { Trash2, Film, ShoppingBag, Users, Ticket } from 'lucide-react';
+import { Trash2, Film, ShoppingBag, Users, Ticket, Pencil } from 'lucide-react';
 
 import { Badge, EmptyState, InputField, SelectField } from './UI.jsx';
 
@@ -42,6 +42,7 @@ export function MoviesTable({
   movies,
   onStatusChange,
   onDelete,
+  onEdit,
   compact,
   emptyMessage = 'No movies found in the schedule.',
 }) {
@@ -59,7 +60,7 @@ export function MoviesTable({
             <th>Added</th>
             <th>Sold</th>
             <th>Status</th>
-            {onDelete ? <th /> : null}
+            {onDelete || onEdit ? <th /> : null}
           </tr>
         </thead>
         <tbody>
@@ -121,25 +122,40 @@ export function MoviesTable({
                   <Badge status={movie.status} />
                 )}
               </td>
-              {onDelete ? (
+              {onDelete || onEdit ? (
                 <td>
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    style={{ padding: '0.3rem 0.6rem', minHeight: 'unset' }}
-                    title={`Delete ${movie.title}`}
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          `Delete "${movie.title}" and its showtime? This cannot be undone.`,
-                        )
-                      ) {
-                        onDelete(movie.id, movie.movieId, movie.title);
-                      }
-                    }}
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {onEdit && (
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        style={{ padding: '0.3rem 0.6rem', minHeight: 'unset', background: 'var(--surface-light)' }}
+                        title={`Edit ${movie.title}`}
+                        onClick={() => onEdit(movie)}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                    )}
+                    {onDelete && (
+                      <button
+                        type="button"
+                        className="btn btn-danger"
+                        style={{ padding: '0.3rem 0.6rem', minHeight: 'unset' }}
+                        title={`Delete ${movie.title}`}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Delete "${movie.title}" and its showtime? This cannot be undone.`,
+                            )
+                          ) {
+                            onDelete(movie.id, movie.movieId, movie.title);
+                          }
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
                 </td>
               ) : null}
             </tr>
@@ -301,7 +317,7 @@ export function BookingsTable({ bookings, compact }) {
   );
 }
 
-export function MovieForm({ form, onChange, onSubmit }) {
+export function MovieForm({ form, onChange, onSubmit, isEditing, onCancel }) {
   const setField = (key) => (value) => onChange((current) => ({ ...current, [key]: value }));
 
   return (
@@ -380,14 +396,24 @@ export function MovieForm({ form, onChange, onSubmit }) {
         onChange={setField('status')}
         options={movieStatusOpts}
       />
-      <div className="form-actions" style={{ gridColumn: '1 / -1' }}>
+      <div className="form-actions" style={{ gridColumn: '1 / -1', display: 'flex', gap: '1rem' }}>
         <button
           type="submit"
           className="btn btn-gold"
-          style={{ width: '100%', justifyContent: 'center', minHeight: 44 }}
+          style={{ flex: 1, justifyContent: 'center', minHeight: 44 }}
         >
-          <Film size={15} /> Save Movie &amp; Showtime
+          <Film size={15} /> {isEditing ? 'Update Movie & Showtime' : 'Save Movie & Showtime'}
         </button>
+        {isEditing && (
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ padding: '0 1.5rem', background: 'var(--surface-light)' }}
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+        )}
       </div>
     </form>
   );

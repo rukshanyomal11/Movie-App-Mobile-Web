@@ -3,7 +3,7 @@ import {
   createMovieSchedule, createService, fetchDashboardData,
   getCurrentSession, loadAdminProfile, signInAdmin, signOutAdmin,
   subscribeToAuthChanges, updateMovieStatus, updateServiceStatus,
-  deleteMovieSchedule,
+  deleteMovieSchedule, updateMovieSchedule,
 } from './supabaseAdminApi';
 import { getSupabaseConfigError, hasSupabaseConfig } from './supabaseClient';
 
@@ -101,6 +101,7 @@ export default function App() {
   const [movieForm, setMovieForm]       = useState(emptyMovieForm);
   const [serviceForm, setServiceForm]   = useState(emptyServiceForm);
   const [movieBoardFilter, setMovieBoardFilter] = useState('now_showing');
+  const [editingMovie, setEditingMovie] = useState(null);
 
   // Auto-clear notice
   useEffect(() => {
@@ -213,10 +214,41 @@ export default function App() {
       setNotice({ type: 'error', msg: 'Fill in all movie fields before saving.' }); return;
     }
     try {
-      await createMovieSchedule(p, adminProfile.id);
-      setMovieForm(emptyMovieForm); await refreshDashboard();
-      setNotice({ type: 'success', msg: `Movie "${p.title}" saved to Supabase.` });
+      if (editingMovie) {
+        await updateMovieSchedule(editingMovie.id, editingMovie.movieId, p, adminProfile.id);
+        setNotice({ type: 'success', msg: `Movie "${p.title}" updated successfully.` });
+      } else {
+        await createMovieSchedule(p, adminProfile.id);
+        setNotice({ type: 'success', msg: `Movie "${p.title}" saved to Supabase.` });
+      }
+      setMovieForm(emptyMovieForm);
+      setEditingMovie(null);
+      await refreshDashboard();
     } catch (err) { setNotice({ type: 'error', msg: getErrorMessage(err) }); }
+  }
+
+  function handleEditMovie(movie) {
+    setEditingMovie(movie);
+    setMovieForm({
+      title: movie.title,
+      genre: movie.genre,
+      language: movie.language,
+      theaterName: movie.branch,
+      city: movie.city,
+      hall: movie.hall,
+      format: movie.format,
+      showTime: movie.showTimeValue ? movie.showTimeValue.slice(0, 5) : '', // HH:mm
+      ticketPrice: String(movie.ticketPrice),
+      status: movie.status,
+      posterUrl: movie.posterUrl,
+    });
+    // Scroll to form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function handleCancelEdit() {
+    setEditingMovie(null);
+    setMovieForm(emptyMovieForm);
   }
 
   async function handleServiceSubmit(e) {
@@ -320,8 +352,17 @@ export default function App() {
 
               {/* Form + Schedule */}
               <div className="content-grid--wide" style={{ display: 'grid', gap: '1.25rem' }}>
-                <SectionPanel title="Add Movie Schedule" description="Fill in the remaining details and save to Supabase.">
-                  <MovieForm form={movieForm} onChange={setMovieForm} onSubmit={handleMovieSubmit} />
+                <SectionPanel 
+                  title={editingMovie ? "Edit Movie Schedule" : "Add Movie Schedule"} 
+                  description={editingMovie ? "Update the existing schedule details." : "Fill in the remaining details and save to Supabase."}
+                >
+                  <MovieForm 
+                    form={movieForm} 
+                    onChange={setMovieForm} 
+                    onSubmit={handleMovieSubmit} 
+                    isEditing={!!editingMovie}
+                    onCancel={handleCancelEdit}
+                  />
                 </SectionPanel>
                 <SectionPanel
                   title="Today's Schedule"
@@ -345,6 +386,7 @@ export default function App() {
                     movies={visibleMovies}
                     onStatusChange={handleMovieStatusChange}
                     onDelete={handleDeleteMovie}
+                    onEdit={handleEditMovie}
                     emptyMessage={getMoviesEmptyMessage(movieBoardFilter)}
                   />
                 </SectionPanel>
