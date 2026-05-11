@@ -1,8 +1,8 @@
 // Shared utility components
 
-export function SectionPanel({ title, description, children, action }) {
+export function SectionPanel({ title, description, children, action, highlight }) {
   return (
-    <div className="glass-card section-panel">
+    <div className={`glass-card section-panel ${highlight ? 'section-panel--highlight' : ''}`}>
       <div className="section-panel__header">
         <div className="section-panel__title-group">
           <h3 className="section-panel__title">{title}</h3>

@@ -355,6 +355,7 @@ export default function App() {
                 <SectionPanel 
                   title={editingMovie ? "Edit Movie Schedule" : "Add Movie Schedule"} 
                   description={editingMovie ? "Update the existing schedule details." : "Fill in the remaining details and save to Supabase."}
+                  highlight={!!editingMovie}
                 >
                   <MovieForm 
                     form={movieForm} 

@@ -870,3 +870,35 @@ select option {
   .page-content { padding: 1rem; }
   .topbar { padding: 0.875rem 1rem; }
 }
+
+/* -- HIGHLIGHT ANIMATION -- */
+.section-panel--highlight {
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 0 1px var(--gold), 0 0 30px rgba(212, 175, 55, 0.35) !important;
+  animation: borderGlow 2s infinite alternate ease-in-out;
+  position: relative;
+  z-index: 5;
+}
+
+@keyframes borderGlow {
+  from { box-shadow: 0 0 5px rgba(212, 175, 55, 0.2), inset 0 0 5px rgba(212, 175, 55, 0.1); }
+  to { box-shadow: 0 0 25px rgba(212, 175, 55, 0.5), inset 0 0 10px rgba(212, 175, 55, 0.2); }
+}
+
+/* -- EDIT ROW HIGHLIGHT -- */
+.row--editing td {
+  border-bottom-color: rgba(212, 175, 55, 0.3) !important;
+}
+
+.row--editing {
+  animation: rowPulse 2s infinite alternate ease-in-out;
+}
+
+@keyframes rowPulse {
+  from { background: rgba(212, 175, 55, 0.12); }
+  to { background: rgba(212, 175, 55, 0.2); }
+}
+
+.row--editing td {
+  transition: background 0.3s ease;
+}

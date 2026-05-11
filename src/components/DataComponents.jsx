@@ -70,9 +70,10 @@ export function MoviesTable({
               key={movie.id} 
               className={movie.id === editingId ? 'row--editing' : ''}
               style={movie.id === editingId ? { 
-                background: 'rgba(212, 175, 55, 0.08)', 
-                boxShadow: 'inset 4px 0 0 var(--gold)',
-                transition: 'all 0.3s ease'
+                background: 'rgba(212, 175, 55, 0.12)', 
+                boxShadow: 'inset 4px 0 0 #d4af37, 0 0 15px rgba(212, 175, 55, 0.1)',
+                zIndex: 10,
+                position: 'relative'
               } : {}}
             >
               <td>
