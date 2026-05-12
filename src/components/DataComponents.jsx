@@ -151,15 +151,7 @@ export function MoviesTable({
                         className="btn btn-danger"
                         style={{ padding: '0.3rem 0.6rem', minHeight: 'unset' }}
                         title={`Delete ${movie.title}`}
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `Delete "${movie.title}" and its showtime(s)? This cannot be undone.`,
-                            )
-                          ) {
-                            onDelete(movie.id, movie.movieId, movie.title, movie.allShowtimeIds);
-                          }
-                        }}
+                        onClick={() => onDelete(movie.id, movie.movieId, movie.title, movie.allShowtimeIds)}
                       >
                         <Trash2 size={14} />
                       </button>
