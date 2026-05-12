@@ -143,16 +143,9 @@ export default function App() {
   }, [movies, users, bookings]);
 
   const visibleMovies = useMemo(() => {
-    // 1. Filter base movies
-    let base = [...movies];
-    
-    if (movieBoardFilter === 'today') {
-      return base.filter(m => m.showDateValue === todayDateStr);
-    }
-
-    // 2. Group by "Movie Run" for 'All' and 'Upcoming'
+    // 1. Group ALL movies into "Runs" first to ensure consistent data
     const groups = new Map();
-    base.forEach(m => {
+    [...movies].forEach(m => {
       const key = `${m.title}-${m.branch}-${m.hall}-${m.showTimeValue}`;
       if (!groups.has(key)) {
         groups.set(key, { 
@@ -171,14 +164,19 @@ export default function App() {
       }
     });
 
-    let result = Array.from(groups.values()).map(g => ({
+    const result = Array.from(groups.values()).map(g => ({
       ...g,
       showDateDisplay: g.startDate === g.endDate ? g.startDate : `${g.startDate} — ${g.endDate}`,
       ticketsSold: g.totalTickets
     }));
 
-    // 3. Apply tab-specific grouping filters
+    // 2. Filter based on selected tab
+    if (movieBoardFilter === 'today') {
+      // Show runs that are active TODAY
+      return result.filter(g => g.startDate <= todayDateStr && g.endDate >= todayDateStr);
+    }
     if (movieBoardFilter === 'upcoming') {
+      // Show runs that start in the future
       return result.filter(g => g.startDate > todayDateStr);
     }
 
