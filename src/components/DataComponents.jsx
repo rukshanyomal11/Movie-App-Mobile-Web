@@ -1,4 +1,4 @@
-import { Trash2, Film, ShoppingBag, Users, Ticket, Pencil } from 'lucide-react';
+import { Trash2, Film, ShoppingBag, Users, Ticket, Pencil, RefreshCw, Copy } from 'lucide-react';
 
 import { Badge, EmptyState, InputField, SelectField } from './UI.jsx';
 
@@ -43,6 +43,8 @@ export function MoviesTable({
   onStatusChange,
   onDelete,
   onEdit,
+  onRenew,
+  onDuplicate,
   editingId,
   compact,
   emptyMessage = 'No movies found in the schedule.',
@@ -60,7 +62,6 @@ export function MoviesTable({
             <th>Venue</th>
             <th>Added</th>
             <th>Sold</th>
-            <th>Status</th>
             {onDelete || onEdit ? <th /> : null}
           </tr>
         </thead>
@@ -107,34 +108,38 @@ export function MoviesTable({
               </td>
               <td>
                 <div className="table-cell-stack">
-                  <strong>{movie.showDate}</strong>
+                  <strong>{movie.showDateDisplay || movie.showDate}</strong>
                   <span>{movie.showTime}</span>
                 </div>
               </td>
               <td>
                 <span>{movie.ticketsSold} tickets</span>
               </td>
-              <td>
-                {onStatusChange ? (
-                  <select
-                    className="status-select"
-                    style={{ width: 'auto', minWidth: 130, fontSize: '0.78rem' }}
-                    value={movie.status}
-                    onChange={(event) => onStatusChange(movie.movieId, event.target.value)}
-                  >
-                    {movieStatusOpts.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <Badge status={movie.status} />
-                )}
-              </td>
               {onDelete || onEdit ? (
                 <td>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {onRenew && (
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        style={{ padding: '0.3rem 0.6rem', minHeight: 'unset', background: 'rgba(52, 211, 153, 0.1)', color: '#34d399' }}
+                        title="Renew for Today"
+                        onClick={() => onRenew(movie.id, movie.movieId, movie.title)}
+                      >
+                        <RefreshCw size={14} />
+                      </button>
+                    )}
+                    {onDuplicate && (
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        style={{ padding: '0.3rem 0.6rem', minHeight: 'unset' }}
+                        title="Duplicate"
+                        onClick={() => onDuplicate(movie)}
+                      >
+                        <Copy size={14} />
+                      </button>
+                    )}
                     {onEdit && (
                       <button
                         type="button"
@@ -160,10 +165,10 @@ export function MoviesTable({
                         onClick={() => {
                           if (
                             window.confirm(
-                              `Delete "${movie.title}" and its showtime? This cannot be undone.`,
+                              `Delete "${movie.title}" and its showtime(s)? This cannot be undone.`,
                             )
                           ) {
-                            onDelete(movie.id, movie.movieId, movie.title);
+                            onDelete(movie.id, movie.movieId, movie.title, movie.allShowtimeIds);
                           }
                         }}
                       >
@@ -387,6 +392,29 @@ export function MovieForm({ form, onChange, onSubmit, isEditing, onCancel }) {
         options={formatOpts}
       />
       <div className="field-group">
+        <label htmlFor="m-date-start">Show Date (Start)</label>
+        <input
+          id="m-date-start"
+          type="date"
+          value={form.showDate}
+          onChange={(event) => setField('showDate')(event.target.value)}
+          style={{ colorScheme: 'dark' }}
+        />
+      </div>
+      <div className="field-group">
+        <label htmlFor="m-date-end">Show Date (End)</label>
+        <input
+          id="m-date-end"
+          type="date"
+          value={form.showDateEnd}
+          onChange={(event) => setField('showDateEnd')(event.target.value)}
+          style={{ colorScheme: 'dark' }}
+        />
+        <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '0.25rem' }}>
+          Leave empty for single day
+        </span>
+      </div>
+      <div className="field-group">
         <label htmlFor="m-time">Show Time</label>
         <input
           id="m-time"
@@ -403,13 +431,6 @@ export function MovieForm({ form, onChange, onSubmit, isEditing, onCancel }) {
         onChange={setField('ticketPrice')}
         placeholder="1800"
         type="number"
-      />
-      <SelectField
-        id="m-status"
-        label="Status"
-        value={form.status}
-        onChange={setField('status')}
-        options={movieStatusOpts}
       />
       <div className="form-actions" style={{ gridColumn: '1 / -1', display: 'flex', gap: '1rem' }}>
         <button

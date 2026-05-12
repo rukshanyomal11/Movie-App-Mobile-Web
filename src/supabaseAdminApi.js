@@ -205,19 +205,30 @@ export async function createMovieSchedule(form, adminProfileId) {
 
   throwIfError(movieError);
 
-  const { error: showtimeError } = await supabase.from('showtimes').insert({
-    movie_id: movie.id,
-    screen_id: screenId,
-    show_date: todayDate,
-    start_time: form.showTime,
-    ticket_price: Number(form.ticketPrice),
-    seats_available: 120,
-    status: 'scheduled',
-  });
+  const startDate = new Date(form.showDate);
+  const endDate = form.showDateEnd ? new Date(form.showDateEnd) : startDate;
+  
+  const showtimes = [];
+  let current = new Date(startDate);
+  
+  while (current <= endDate) {
+    const dateStr = current.toISOString().split('T')[0];
+    showtimes.push({
+      movie_id: movie.id,
+      screen_id: screenId,
+      show_date: dateStr,
+      start_time: form.showTime,
+      ticket_price: Number(form.ticketPrice),
+      seats_available: 120,
+      status: 'scheduled',
+    });
+    current.setDate(current.getDate() + 1);
+  }
 
+  const { error: showtimeError } = await supabase.from('showtimes').insert(showtimes);
   throwIfError(showtimeError);
 
-  await writeAuditLog(adminProfileId, 'movie', movie.id, 'create', `Created ${movie.title}`);
+  await writeAuditLog(adminProfileId, 'movie', movie.id, 'create', `Created ${movie.title} for ${showtimes.length} day(s)`);
 }
 
 export async function updateMovieSchedule(showtimeId, movieId, form, adminProfileId) {
@@ -244,6 +255,7 @@ export async function updateMovieSchedule(showtimeId, movieId, form, adminProfil
     .from('showtimes')
     .update({
       screen_id: screenId,
+      show_date: form.showDate,
       start_time: form.showTime,
       ticket_price: Number(form.ticketPrice),
     })
@@ -454,6 +466,7 @@ function mapMovies(showtimes, bookings) {
       showDateValue: row.show_date ?? '',
       showTime: formatTime(row.start_time),
       showTimeValue: row.start_time ?? '',
+      screenId: row.screen?.id ?? '',
       hall: row.screen?.name ?? 'Unassigned hall',
       branch: row.screen?.theater?.name ?? 'Unassigned theater',
       city: row.screen?.theater?.city ?? 'Unassigned city',

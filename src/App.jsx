@@ -28,7 +28,8 @@ import { DatabaseView }  from './components/DatabaseView.jsx';
 
 import {
   emptyMovieForm, emptyServiceForm, movieBoardFilters,
-  getErrorMessage, matchesMovieBoardFilter, getMoviesEmptyMessage
+  getErrorMessage, getMoviesEmptyMessage,
+  todayDateStr
 } from './utils/dashboardUtils';
 
 export default function App() {
@@ -45,9 +46,9 @@ export default function App() {
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [isSyncing, setIsSyncing]       = useState(false);
   
-  const [movieForm, setMovieForm]       = useState(emptyMovieForm);
+  const [movieForm, setMovieForm]       = useState({ ...emptyMovieForm, showDate: todayDateStr });
   const [serviceForm, setServiceForm]   = useState(emptyServiceForm);
-  const [movieBoardFilter, setMovieBoardFilter] = useState('now_showing');
+  const [movieBoardFilter, setMovieBoardFilter] = useState('today');
   const [editingMovie, setEditingMovie] = useState(null);
 
   const [userSearchQuery, setUserSearchQuery] = useState('');
@@ -86,16 +87,18 @@ export default function App() {
     return () => { ignore = true; sub.unsubscribe(); };
   }, []);
 
-  const refreshDashboard = useCallback(async () => {
-    setIsSyncing(true);
+  const refreshDashboard = useCallback(async (silent = false) => {
+    if (!silent) setIsSyncing(true);
     try {
-      const d = await fetchDashboardData();
-      setMovies(d.movies); setServices(d.services);
-      setUsers(d.users);   setBookings(d.bookings);
+      const data = await fetchDashboardData();
+      setMovies(data.movies);
+      setServices(data.services);
+      setUsers(data.users);
+      setBookings(data.bookings);
     } catch (e) {
       setNotice({ type: 'error', msg: getErrorMessage(e) });
     } finally {
-      setIsSyncing(false);
+      if (!silent) setIsSyncing(false);
     }
   }, []);
 
@@ -126,7 +129,7 @@ export default function App() {
 
   // Derived State (Metrics, Filters, etc.)
   const metrics = useMemo(() => {
-    const liveMovies    = movies.filter((movie) => matchesMovieBoardFilter(movie, 'now_showing')).length;
+    const liveMovies    = movies.filter((m) => m.showDateValue === todayDateStr && m.showtimeStatus !== 'cancelled').length;
     const activeUsers   = users.filter(u => u.status === 'active').length;
     const revenue       = bookings.filter(b => b.paymentStatus === 'paid').reduce((t, b) => t + b.total, 0);
     return [
@@ -137,8 +140,50 @@ export default function App() {
     ];
   }, [movies, users, bookings]);
 
-  const visibleMovies = useMemo(() => movies.filter(m => matchesMovieBoardFilter(m, movieBoardFilter)), [movies, movieBoardFilter]);
-  const topMovies = useMemo(() => [...movies].filter(m => matchesMovieBoardFilter(m, 'now_showing')).sort((a, b) => b.ticketsSold - a.ticketsSold).slice(0, 5), [movies]);
+  const visibleMovies = useMemo(() => {
+    // 1. Filter base movies
+    let base = [...movies];
+    
+    if (movieBoardFilter === 'today') {
+      return base.filter(m => m.showDateValue === todayDateStr);
+    }
+
+    // 2. Group by "Movie Run" for 'All' and 'Upcoming'
+    const groups = new Map();
+    base.forEach(m => {
+      const key = `${m.title}-${m.branch}-${m.hall}-${m.showTimeValue}`;
+      if (!groups.has(key)) {
+        groups.set(key, { 
+          ...m, 
+          startDate: m.showDateValue, 
+          endDate: m.showDateValue,
+          allShowtimeIds: [m.id],
+          totalTickets: m.ticketsSold
+        });
+      } else {
+        const g = groups.get(key);
+        if (m.showDateValue < g.startDate) g.startDate = m.showDateValue;
+        if (m.showDateValue > g.endDate) g.endDate = m.showDateValue;
+        g.allShowtimeIds.push(m.id);
+        g.totalTickets += m.ticketsSold;
+      }
+    });
+
+    let result = Array.from(groups.values()).map(g => ({
+      ...g,
+      showDateDisplay: g.startDate === g.endDate ? g.startDate : `${g.startDate} — ${g.endDate}`,
+      ticketsSold: g.totalTickets
+    }));
+
+    // 3. Apply tab-specific grouping filters
+    if (movieBoardFilter === 'upcoming') {
+      return result.filter(g => g.startDate > todayDateStr);
+    }
+
+    return result;
+  }, [movies, movieBoardFilter]);
+
+  const topMovies = useMemo(() => [...movies].filter(m => m.showDateValue === todayDateStr).sort((a, b) => b.ticketsSold - a.ticketsSold).slice(0, 5), [movies]);
   
   const filteredUsers = useMemo(() => {
     if (selectedUserId) return users.filter(u => u.id === selectedUserId);
@@ -187,14 +232,20 @@ export default function App() {
     try {
       if (editingMovie) await updateMovieSchedule(editingMovie.id, editingMovie.movieId, p, adminProfile.id);
       else await createMovieSchedule(p, adminProfile.id);
-      setMovieForm(emptyMovieForm); setEditingMovie(null); await refreshDashboard();
+      setMovieForm({ ...emptyMovieForm, showDate: todayDateStr }); setEditingMovie(null); await refreshDashboard();
       setNotice({ type: 'success', msg: 'Movie schedule saved.' });
     } catch (err) { setNotice({ type: 'error', msg: getErrorMessage(err) }); }
   }
 
   function handleEditMovie(m) { 
     setEditingMovie(m); 
-    setMovieForm({ ...m, theaterName: m.branch, showTime: m.showTimeValue ? m.showTimeValue.slice(0, 5) : '', ticketPrice: String(m.ticketPrice) });
+    setMovieForm({ 
+      ...m, 
+      theaterName: m.branch, 
+      showDate: m.showDateValue,
+      showTime: m.showTimeValue ? m.showTimeValue.slice(0, 5) : '', 
+      ticketPrice: String(m.ticketPrice) 
+    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -206,9 +257,41 @@ export default function App() {
     catch (err) { setNotice({ type: 'error', msg: getErrorMessage(err) }); }
   }
 
-  async function handleMovieStatusChange(id, status) { try { await updateMovieStatus(id, status, adminProfile.id); await refreshDashboard(); } catch (e) { setNotice({ type: 'error', msg: getErrorMessage(e) }); } }
   async function handleServiceStatusChange(id, status) { try { await updateServiceStatus(id, status, adminProfile.id); await refreshDashboard(); } catch (e) { setNotice({ type: 'error', msg: getErrorMessage(e) }); } }
-  async function handleDeleteMovie(sId, mId, title) { try { await deleteMovieSchedule(sId, mId, title, adminProfile.id); await refreshDashboard(); } catch (e) { setNotice({ type: 'error', msg: getErrorMessage(e) }); } }
+  
+  async function handleDeleteMovie(id, mId, title, idsToDelete) { 
+    try { 
+      const targetIds = idsToDelete || [id];
+      for (const sId of targetIds) {
+        await deleteMovieSchedule(sId, mId, title, adminProfile.id); 
+      }
+      await refreshDashboard(); 
+    } catch (e) { 
+      setNotice({ type: 'error', msg: getErrorMessage(e) }); 
+    } 
+  }
+
+  async function handleRenewMovie(showtimeId, movieId, title) {
+    try {
+      await updateMovieSchedule(showtimeId, movieId, { showDate: todayDateStr }, adminProfile.id);
+      await refreshDashboard();
+      setNotice({ type: 'success', msg: `Renewed "${title}" for today.` });
+    } catch (e) {
+      setNotice({ type: 'error', msg: getErrorMessage(e) });
+    }
+  }
+
+  function handleDuplicateMovie(m) {
+    setMovieForm({ 
+      ...m, 
+      theaterName: m.branch, 
+      showDate: todayDateStr,
+      showTime: m.showTimeValue ? m.showTimeValue.slice(0, 5) : '', 
+      ticketPrice: String(m.ticketPrice) 
+    });
+    setEditingMovie(null); // Ensure it saves as NEW
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
   if (!hasSupabaseConfig) return <ConfigScreen message={getSupabaseConfigError()} />;
   if (!session) return <LoginScreen form={loginForm} error={loginError} onChange={setLoginForm} onSubmit={handleLogin} isLoading={isBootstrapping} />;
@@ -229,7 +312,7 @@ export default function App() {
         )}
         <main className="page-content">
           {activeView === 'dashboard' && <DashboardView metrics={metrics} movies={movies} services={services} users={users} bookings={bookings} topMovies={topMovies} />}
-          {activeView === 'movies'    && <MoviesView movieForm={movieForm} setMovieForm={setMovieForm} handleMovieSubmit={handleMovieSubmit} editingMovie={editingMovie} handleCancelEdit={() => {setEditingMovie(null); setMovieForm(emptyMovieForm);}} movieBoardFilters={movieBoardFilters} movieBoardFilter={movieBoardFilter} setMovieBoardFilter={setMovieBoardFilter} visibleMovies={visibleMovies} handleMovieStatusChange={handleMovieStatusChange} handleDeleteMovie={handleDeleteMovie} handleEditMovie={handleEditMovie} getMoviesEmptyMessage={getMoviesEmptyMessage} />}
+          {activeView === 'movies'    && <MoviesView movieForm={movieForm} setMovieForm={setMovieForm} handleMovieSubmit={handleMovieSubmit} editingMovie={editingMovie} handleCancelEdit={() => {setEditingMovie(null); setMovieForm({ ...emptyMovieForm, showDate: todayDateStr });}} movieBoardFilters={movieBoardFilters} movieBoardFilter={movieBoardFilter} setMovieBoardFilter={setMovieBoardFilter} visibleMovies={visibleMovies} handleDeleteMovie={handleDeleteMovie} handleEditMovie={handleEditMovie} handleRenewMovie={handleRenewMovie} handleDuplicateMovie={handleDuplicateMovie} getMoviesEmptyMessage={getMoviesEmptyMessage} />}
           {activeView === 'services'  && <ServicesView serviceForm={serviceForm} setServiceForm={setServiceForm} handleServiceSubmit={handleServiceSubmit} services={services} handleServiceStatusChange={handleServiceStatusChange} />}
           {activeView === 'users'     && <UsersView userSearchQuery={userSearchQuery} setUserSearchQuery={setUserSearchQuery} setShowSuggestions={setShowSuggestions} userSuggestions={userSuggestions} setSelectedUserId={setSelectedUserId} paginatedUsers={paginatedUsers} totalUserPages={totalUserPages} userPage={userPage} setUserPage={setUserPage} />}
           {activeView === 'bookings'  && <BookingsView bookingDate={bookingDate} setBookingDate={setBookingDate} availableBookingDates={availableBookingDates} bookingMovieTitle={bookingMovieTitle} setBookingMovieTitle={setBookingMovieTitle} availableBookingMovies={availableBookingMovies} bookingShowtimeId={bookingShowtimeId} setBookingShowtimeId={setBookingShowtimeId} availableBookingShowtimes={availableBookingShowtimes} filteredBookings={filteredBookings} />}

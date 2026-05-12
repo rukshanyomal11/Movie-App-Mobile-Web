@@ -1,15 +1,14 @@
 export const emptyMovieForm = {
   title: '', genre: '', language: '', theaterName: '', city: '',
-  hall: '', format: '2D', showTime: '', ticketPrice: '', status: 'now_showing',
+  hall: '', format: '2D', showDate: '', showDateEnd: '', showTime: '', ticketPrice: '',
   posterUrl: '', tmdbId: '',
 };
 
 export const emptyServiceForm = { name: '', category: '', branch: '', price: '', status: 'active' };
 
 export const movieBoardFilters = [
-  { value: 'now_showing', label: 'Now Showing' },
+  { value: 'today', label: 'Today' },
   { value: 'upcoming', label: 'Upcoming' },
-  { value: 'paused', label: 'Paused' },
   { value: 'all', label: 'All' },
 ];
 
@@ -36,20 +35,18 @@ export function getViewTitle(v) {
   return map[v] || v;
 }
 
-export function matchesMovieBoardFilter(movie, filter) {
-  if (filter === 'all') return true;
-  if (filter === 'now_showing') {
-    return ['now_showing', 'featured'].includes(movie.status) && movie.showtimeStatus !== 'cancelled';
-  }
-  if (filter === 'paused') {
-    return movie.status === 'paused' || movie.showtimeStatus === 'cancelled';
-  }
-  return movie.status === filter;
-}
-
 export function getMoviesEmptyMessage(filter) {
-  if (filter === 'now_showing') return 'No now showing movies in the schedule.';
-  if (filter === 'upcoming') return 'No upcoming movies in the schedule.';
-  if (filter === 'paused') return 'No paused movies in the schedule.';
+  if (filter === 'today') return 'No movies scheduled for today.';
+  if (filter === 'upcoming') return 'No upcoming movies scheduled.';
   return 'No movies found in the schedule.';
 }
+
+export function getLocalDateString() {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export const todayDateStr = getLocalDateString();

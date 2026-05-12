@@ -6,6 +6,7 @@ export function MoviesView({
   movieForm, setMovieForm, handleMovieSubmit, editingMovie, handleCancelEdit,
   movieBoardFilters, movieBoardFilter, setMovieBoardFilter,
   visibleMovies, handleMovieStatusChange, handleDeleteMovie, handleEditMovie,
+  handleRenewMovie, handleDuplicateMovie,
   getMoviesEmptyMessage
 }) {
   return (
@@ -67,6 +68,8 @@ export function MoviesView({
             onStatusChange={handleMovieStatusChange}
             onDelete={handleDeleteMovie}
             onEdit={handleEditMovie}
+            onRenew={handleRenewMovie}
+            onDuplicate={handleDuplicateMovie}
             editingId={editingMovie?.id}
             emptyMessage={getMoviesEmptyMessage(movieBoardFilter)}
           />
