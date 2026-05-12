@@ -5,11 +5,12 @@ import {
 } from 'lucide-react';
 
 import {
-  createMovieSchedule, createService, fetchDashboardData,
+  fetchDashboardData, createMovieSchedule, updateMovieSchedule, deleteMovieSchedule,
+  updateMovieStatus, createService, updateServiceStatus,
   getCurrentSession, loadAdminProfile, signInAdmin, signOutAdmin,
-  subscribeToAuthChanges, updateMovieStatus, updateServiceStatus,
-  deleteMovieSchedule, updateMovieSchedule,
+  subscribeToAuthChanges
 } from './supabaseAdminApi';
+import { ConfirmModal } from './components/DataComponents.jsx';
 import { getSupabaseConfigError, hasSupabaseConfig } from './supabaseClient';
 
 import { Sidebar }                              from './components/Sidebar.jsx';
@@ -50,6 +51,7 @@ export default function App() {
   const [serviceForm, setServiceForm]   = useState(emptyServiceForm);
   const [movieBoardFilter, setMovieBoardFilter] = useState('today');
   const [editingMovie, setEditingMovie] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -261,15 +263,24 @@ export default function App() {
   async function handleServiceStatusChange(id, status) { try { await updateServiceStatus(id, status, adminProfile.id); await refreshDashboard(); } catch (e) { setNotice({ type: 'error', msg: getErrorMessage(e) }); } }
   
   async function handleDeleteMovie(id, mId, title, idsToDelete) { 
-    try { 
-      const targetIds = idsToDelete || [id];
-      for (const sId of targetIds) {
-        await deleteMovieSchedule(sId, mId, title, adminProfile.id); 
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Movie Schedule?',
+      message: `Are you sure you want to delete "${title}" and its showtime(s)? This cannot be undone.`,
+      onConfirm: async () => {
+        try { 
+          const targetIds = idsToDelete || [id];
+          for (const sId of targetIds) {
+            await deleteMovieSchedule(sId, mId, title, adminProfile.id); 
+          }
+          await refreshDashboard(); 
+          setConfirmDialog({ ...confirmDialog, isOpen: false });
+        } catch (e) { 
+          setNotice({ type: 'error', msg: getErrorMessage(e) }); 
+          setConfirmDialog({ ...confirmDialog, isOpen: false });
+        } 
       }
-      await refreshDashboard(); 
-    } catch (e) { 
-      setNotice({ type: 'error', msg: getErrorMessage(e) }); 
-    } 
+    });
   }
 
   function handleDuplicateMovie(m) {
@@ -312,6 +323,13 @@ export default function App() {
           {activeView === 'database'  && <DatabaseView />}
         </main>
       </div>
+      <ConfirmModal 
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+      />
     </div>
   );
 }

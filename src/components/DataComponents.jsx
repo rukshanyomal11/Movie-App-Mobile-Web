@@ -497,3 +497,58 @@ export function ServiceForm({ form, onChange, onSubmit }) {
     </form>
   );
 }
+
+export function ConfirmModal({ isOpen, title, message, onConfirm, onCancel, confirmLabel = 'Delete', confirmVariant = 'danger' }) {
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className="modal-overlay" 
+      style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(8px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 9999, padding: '1rem',
+        animation: 'fadeIn 0.2s ease-out'
+      }}
+      onClick={onCancel}
+    >
+      <div 
+        className="modal-card" 
+        style={{
+          background: 'var(--surface)', border: '1px solid var(--surface-light)',
+          borderRadius: '1.25rem', width: '100%', maxWidth: '400px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+          animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+          overflow: 'hidden'
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{ padding: '1.75rem' }}>
+          <h3 style={{ fontSize: '1.25rem', marginBottom: '0.75rem', color: 'var(--text)' }}>{title}</h3>
+          <p style={{ color: 'var(--text-dim)', lineHeight: '1.5', fontSize: '0.9rem' }}>{message}</p>
+        </div>
+        <div style={{ 
+          padding: '1.25rem 1.75rem', background: 'rgba(255,255,255,0.02)', 
+          borderTop: '1px solid var(--surface-light)',
+          display: 'flex', gap: '1rem', justifyContent: 'flex-end'
+        }}>
+          <button 
+            className="btn btn-ghost" 
+            onClick={onCancel}
+            style={{ padding: '0.6rem 1.25rem', minHeight: 'unset' }}
+          >
+            Cancel
+          </button>
+          <button 
+            className={`btn btn-${confirmVariant}`}
+            onClick={onConfirm}
+            style={{ padding: '0.6rem 1.25rem', minHeight: 'unset', fontWeight: '600' }}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
