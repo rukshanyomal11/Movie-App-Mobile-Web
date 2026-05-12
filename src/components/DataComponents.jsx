@@ -118,17 +118,6 @@ export function MoviesTable({
               {onDelete || onEdit ? (
                 <td>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    {onRenew && (
-                      <button
-                        type="button"
-                        className="btn btn-ghost"
-                        style={{ padding: '0.3rem 0.6rem', minHeight: 'unset', background: 'rgba(52, 211, 153, 0.1)', color: '#34d399' }}
-                        title="Renew for Today"
-                        onClick={() => onRenew(movie.id, movie.movieId, movie.title)}
-                      >
-                        <RefreshCw size={14} />
-                      </button>
-                    )}
                     {onDuplicate && (
                       <button
                         type="button"

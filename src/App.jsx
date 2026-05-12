@@ -242,7 +242,8 @@ export default function App() {
     setMovieForm({ 
       ...m, 
       theaterName: m.branch, 
-      showDate: m.showDateValue,
+      showDate: m.startDate || m.showDateValue,
+      showDateEnd: m.endDate || '',
       showTime: m.showTimeValue ? m.showTimeValue.slice(0, 5) : '', 
       ticketPrice: String(m.ticketPrice) 
     });
@@ -271,21 +272,12 @@ export default function App() {
     } 
   }
 
-  async function handleRenewMovie(showtimeId, movieId, title) {
-    try {
-      await updateMovieSchedule(showtimeId, movieId, { showDate: todayDateStr }, adminProfile.id);
-      await refreshDashboard();
-      setNotice({ type: 'success', msg: `Renewed "${title}" for today.` });
-    } catch (e) {
-      setNotice({ type: 'error', msg: getErrorMessage(e) });
-    }
-  }
-
   function handleDuplicateMovie(m) {
     setMovieForm({ 
       ...m, 
       theaterName: m.branch, 
       showDate: todayDateStr,
+      showDateEnd: '',
       showTime: m.showTimeValue ? m.showTimeValue.slice(0, 5) : '', 
       ticketPrice: String(m.ticketPrice) 
     });
@@ -312,7 +304,7 @@ export default function App() {
         )}
         <main className="page-content">
           {activeView === 'dashboard' && <DashboardView metrics={metrics} movies={movies} services={services} users={users} bookings={bookings} topMovies={topMovies} />}
-          {activeView === 'movies'    && <MoviesView movieForm={movieForm} setMovieForm={setMovieForm} handleMovieSubmit={handleMovieSubmit} editingMovie={editingMovie} handleCancelEdit={() => {setEditingMovie(null); setMovieForm({ ...emptyMovieForm, showDate: todayDateStr });}} movieBoardFilters={movieBoardFilters} movieBoardFilter={movieBoardFilter} setMovieBoardFilter={setMovieBoardFilter} visibleMovies={visibleMovies} handleDeleteMovie={handleDeleteMovie} handleEditMovie={handleEditMovie} handleRenewMovie={handleRenewMovie} handleDuplicateMovie={handleDuplicateMovie} getMoviesEmptyMessage={getMoviesEmptyMessage} />}
+          {activeView === 'movies'    && <MoviesView movieForm={movieForm} setMovieForm={setMovieForm} handleMovieSubmit={handleMovieSubmit} editingMovie={editingMovie} handleCancelEdit={() => {setEditingMovie(null); setMovieForm({ ...emptyMovieForm, showDate: todayDateStr });}} movieBoardFilters={movieBoardFilters} movieBoardFilter={movieBoardFilter} setMovieBoardFilter={setMovieBoardFilter} visibleMovies={visibleMovies} handleDeleteMovie={handleDeleteMovie} handleEditMovie={handleEditMovie} handleDuplicateMovie={handleDuplicateMovie} getMoviesEmptyMessage={getMoviesEmptyMessage} />}
           {activeView === 'services'  && <ServicesView serviceForm={serviceForm} setServiceForm={setServiceForm} handleServiceSubmit={handleServiceSubmit} services={services} handleServiceStatusChange={handleServiceStatusChange} />}
           {activeView === 'users'     && <UsersView userSearchQuery={userSearchQuery} setUserSearchQuery={setUserSearchQuery} setShowSuggestions={setShowSuggestions} userSuggestions={userSuggestions} setSelectedUserId={setSelectedUserId} paginatedUsers={paginatedUsers} totalUserPages={totalUserPages} userPage={userPage} setUserPage={setUserPage} />}
           {activeView === 'bookings'  && <BookingsView bookingDate={bookingDate} setBookingDate={setBookingDate} availableBookingDates={availableBookingDates} bookingMovieTitle={bookingMovieTitle} setBookingMovieTitle={setBookingMovieTitle} availableBookingMovies={availableBookingMovies} bookingShowtimeId={bookingShowtimeId} setBookingShowtimeId={setBookingShowtimeId} availableBookingShowtimes={availableBookingShowtimes} filteredBookings={filteredBookings} />}

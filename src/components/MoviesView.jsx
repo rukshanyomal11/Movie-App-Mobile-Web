@@ -68,7 +68,6 @@ export function MoviesView({
             onStatusChange={handleMovieStatusChange}
             onDelete={handleDeleteMovie}
             onEdit={handleEditMovie}
-            onRenew={handleRenewMovie}
             onDuplicate={handleDuplicateMovie}
             editingId={editingMovie?.id}
             emptyMessage={getMoviesEmptyMessage(movieBoardFilter)}
