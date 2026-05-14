@@ -9,6 +9,7 @@ export const emptyServiceForm = { name: '', category: '', branch: '', price: '',
 export const movieBoardFilters = [
   { value: 'today', label: 'Today' },
   { value: 'upcoming', label: 'Upcoming' },
+  { value: 'passed', label: 'Passed' },
   { value: 'all', label: 'All' },
 ];
 
@@ -38,6 +39,7 @@ export function getViewTitle(v) {
 export function getMoviesEmptyMessage(filter) {
   if (filter === 'today') return 'No movies scheduled for today.';
   if (filter === 'upcoming') return 'No upcoming movies scheduled.';
+  if (filter === 'passed') return 'No past movie schedules found.';
   return 'No movies found in the schedule.';
 }
 

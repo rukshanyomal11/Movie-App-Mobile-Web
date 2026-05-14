@@ -179,6 +179,10 @@ export default function App() {
       // Show runs that start in the future
       return result.filter(g => g.startDate > todayDateStr);
     }
+    if (movieBoardFilter === 'passed') {
+      // Show runs that have already ended
+      return result.filter(g => g.endDate < todayDateStr);
+    }
 
     return result;
   }, [movies, movieBoardFilter]);
