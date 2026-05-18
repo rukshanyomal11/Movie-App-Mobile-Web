@@ -1,4 +1,4 @@
-import { Film, LayoutDashboard, Ticket, Users, ShoppingBag, Database, LogOut, Grid } from 'lucide-react';
+import { Film, LayoutDashboard, Ticket, Users, ShoppingBag, Database, LogOut, Grid, MessageCircle } from 'lucide-react';
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -7,6 +7,7 @@ const navItems = [
   { id: 'services',  label: 'Services', icon: ShoppingBag },
   { id: 'users',     label: 'App Users', icon: Users },
   { id: 'bookings',  label: 'Bookings', icon: Ticket },
+  { id: 'support',   label: 'Support Chats', icon: MessageCircle },
   { id: 'database',  label: 'Database', icon: Database },
 ];
 

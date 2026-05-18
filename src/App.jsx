@@ -26,6 +26,7 @@ import { BookingsView }  from './components/BookingsView.jsx';
 import { SeatMapsView }  from './components/SeatMapsView.jsx';
 import { DashboardView } from './components/DashboardView.jsx';
 import { DatabaseView }  from './components/DatabaseView.jsx';
+import { SupportView }   from './components/SupportView.jsx';
 
 import {
   emptyMovieForm, emptyServiceForm, movieBoardFilters,
@@ -322,6 +323,7 @@ export default function App() {
           {activeView === 'users'     && <UsersView userSearchQuery={userSearchQuery} setUserSearchQuery={setUserSearchQuery} setShowSuggestions={setShowSuggestions} userSuggestions={userSuggestions} setSelectedUserId={setSelectedUserId} paginatedUsers={paginatedUsers} totalUserPages={totalUserPages} userPage={userPage} setUserPage={setUserPage} />}
           {activeView === 'bookings'  && <BookingsView bookingDate={bookingDate} setBookingDate={setBookingDate} availableBookingDates={availableBookingDates} bookingMovieTitle={bookingMovieTitle} setBookingMovieTitle={setBookingMovieTitle} availableBookingMovies={availableBookingMovies} bookingShowtimeId={bookingShowtimeId} setBookingShowtimeId={setBookingShowtimeId} availableBookingShowtimes={availableBookingShowtimes} filteredBookings={filteredBookings} />}
           {activeView === 'seat-maps' && <SeatMapsView movies={movies} bookings={bookings} />}
+          {activeView === 'support'   && <SupportView adminProfile={adminProfile} users={users} movies={movies} />}
           {activeView === 'database'  && <DatabaseView />}
         </main>
       </div>
