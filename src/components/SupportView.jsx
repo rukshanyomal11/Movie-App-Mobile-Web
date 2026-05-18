@@ -31,6 +31,21 @@ export function SupportView({ adminProfile, users, movies }) {
       setIsLoading(false);
     }
     loadChats();
+
+    const chatsChannel = supabase
+      .channel('public:chats')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chats' },
+        (payload) => {
+          setChats((prev) => [payload.new, ...prev]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(chatsChannel);
+    };
   }, []);
 
   // Fetch messages for active chat and subscribe
@@ -84,7 +99,7 @@ export function SupportView({ adminProfile, users, movies }) {
 
     const { error } = await supabase.from('chat_messages').insert([{
       chat_id: activeChat.id,
-      sender_id: adminProfile.id,
+      sender_id: adminProfile.authUserId,
       message: msgText,
       is_admin_reply: true,
     }]);
