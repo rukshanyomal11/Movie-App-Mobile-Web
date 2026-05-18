@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient';
 import { Send, User, MessageSquare } from 'lucide-react';
 import { PageState, SectionPanel } from './UI.jsx';
 
-export function SupportView({ adminProfile, users, movies }) {
+export function SupportView({ adminProfile, users, movies, bookings }) {
   const [chats, setChats] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -168,11 +168,42 @@ export function SupportView({ adminProfile, users, movies }) {
 
       {/* Right Panel: Active Chat */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {activeChat ? (
+        {activeChat ? (() => {
+          const activeUser = users.find(u => u.id === activeChat.user_id);
+          const activeBooking = bookings?.find(b => b.id === activeChat.booking_id);
+          const activeShowtime = movies.find(m => m.id === activeBooking?.showtimeId);
+          
+          return (
           <SectionPanel 
-            title={`Chat with ${users.find(u => u.id === activeChat.user_id)?.name || 'User'}`} 
+            title={`Chat with ${activeUser?.name || 'User'}`} 
             style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}
           >
+            {/* TICKET DETAILS HEADER */}
+            {activeBooking && (
+              <div style={{
+                padding: '1rem 1.5rem',
+                backgroundColor: 'var(--surface-alt)',
+                borderBottom: '1px solid var(--stroke)',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '0.75rem',
+                fontSize: '0.85rem'
+              }}>
+                <div style={{ color: 'var(--text-muted)' }}>
+                  Movie: <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{activeBooking.movieTitle}</span>
+                </div>
+                <div style={{ color: 'var(--text-muted)' }}>
+                  Ticket ID: <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>B-{activeChat.booking_id.substring(0,8).toUpperCase()}</span>
+                </div>
+                <div style={{ color: 'var(--text-muted)' }}>
+                  Time: <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{activeShowtime?.showDate} at {activeShowtime?.showTime}</span>
+                </div>
+                <div style={{ color: 'var(--text-muted)' }}>
+                  Location: <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{activeShowtime?.city} — {activeShowtime?.hall}</span>
+                </div>
+              </div>
+            )}
+
             {/* Messages Area */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', backgroundColor: 'var(--surface)' }}>
               {messages.length === 0 ? (
@@ -259,7 +290,8 @@ export function SupportView({ adminProfile, users, movies }) {
               </button>
             </form>
           </SectionPanel>
-        ) : (
+        );
+        })() : (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--surface)', borderRadius: '16px', border: '1px dashed var(--stroke)' }}>
             <MessageSquare size={48} color="var(--text-muted)" style={{ marginBottom: '1rem', opacity: 0.5 }} />
             <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No Chat Selected</h3>

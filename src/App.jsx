@@ -323,7 +323,7 @@ export default function App() {
           {activeView === 'users'     && <UsersView userSearchQuery={userSearchQuery} setUserSearchQuery={setUserSearchQuery} setShowSuggestions={setShowSuggestions} userSuggestions={userSuggestions} setSelectedUserId={setSelectedUserId} paginatedUsers={paginatedUsers} totalUserPages={totalUserPages} userPage={userPage} setUserPage={setUserPage} />}
           {activeView === 'bookings'  && <BookingsView bookingDate={bookingDate} setBookingDate={setBookingDate} availableBookingDates={availableBookingDates} bookingMovieTitle={bookingMovieTitle} setBookingMovieTitle={setBookingMovieTitle} availableBookingMovies={availableBookingMovies} bookingShowtimeId={bookingShowtimeId} setBookingShowtimeId={setBookingShowtimeId} availableBookingShowtimes={availableBookingShowtimes} filteredBookings={filteredBookings} />}
           {activeView === 'seat-maps' && <SeatMapsView movies={movies} bookings={bookings} />}
-          {activeView === 'support'   && <SupportView adminProfile={adminProfile} users={users} movies={movies} />}
+          {activeView === 'support'   && <SupportView adminProfile={adminProfile} users={users} movies={movies} bookings={bookings} />}
           {activeView === 'database'  && <DatabaseView />}
         </main>
       </div>
