@@ -11,7 +11,7 @@ import {
   subscribeToAuthChanges
 } from './supabaseAdminApi';
 import { ConfirmModal } from './components/DataComponents.jsx';
-import { getSupabaseConfigError, hasSupabaseConfig } from './supabaseClient';
+import { getSupabaseConfigError, hasSupabaseConfig, supabase } from './supabaseClient';
 
 import { Sidebar }                              from './components/Sidebar.jsx';
 import { Topbar }                               from './components/Topbar.jsx';
@@ -47,6 +47,7 @@ export default function App() {
   const [loginError, setLoginError]     = useState('');
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [isSyncing, setIsSyncing]       = useState(false);
+  const [onlineUserIds, setOnlineUserIds] = useState(new Set());
   
   const [movieForm, setMovieForm]       = useState({ ...emptyMovieForm, showDate: todayDateStr });
   const [serviceForm, setServiceForm]   = useState(emptyServiceForm);
@@ -129,6 +130,36 @@ export default function App() {
   useEffect(() => {
     if (adminProfile?.id) refreshDashboard();
   }, [adminProfile?.id, refreshDashboard]);
+
+  // Global Presence Tracking
+  useEffect(() => {
+    if (!adminProfile) return;
+    
+    const channel = supabase.channel('system:online_users');
+    
+    channel.on('presence', { event: 'sync' }, () => {
+      const state = channel.presenceState();
+      const onlineSet = new Set();
+      for (const key in state) {
+        for (const presence of state[key]) {
+          if (presence.is_admin === false && presence.user_id) {
+            onlineSet.add(presence.user_id);
+          }
+        }
+      }
+      setOnlineUserIds(onlineSet);
+    });
+
+    channel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await channel.track({ is_admin: true, user_id: adminProfile.authUserId });
+      }
+    });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [adminProfile]);
 
   // Derived State (Metrics, Filters, etc.)
   const metrics = useMemo(() => {
@@ -323,7 +354,7 @@ export default function App() {
           {activeView === 'users'     && <UsersView userSearchQuery={userSearchQuery} setUserSearchQuery={setUserSearchQuery} setShowSuggestions={setShowSuggestions} userSuggestions={userSuggestions} setSelectedUserId={setSelectedUserId} paginatedUsers={paginatedUsers} totalUserPages={totalUserPages} userPage={userPage} setUserPage={setUserPage} />}
           {activeView === 'bookings'  && <BookingsView bookingDate={bookingDate} setBookingDate={setBookingDate} availableBookingDates={availableBookingDates} bookingMovieTitle={bookingMovieTitle} setBookingMovieTitle={setBookingMovieTitle} availableBookingMovies={availableBookingMovies} bookingShowtimeId={bookingShowtimeId} setBookingShowtimeId={setBookingShowtimeId} availableBookingShowtimes={availableBookingShowtimes} filteredBookings={filteredBookings} />}
           {activeView === 'seat-maps' && <SeatMapsView movies={movies} bookings={bookings} />}
-          {activeView === 'support'   && <SupportView adminProfile={adminProfile} users={users} movies={movies} bookings={bookings} />}
+          {activeView === 'support'   && <SupportView adminProfile={adminProfile} users={users} movies={movies} bookings={bookings} onlineUserIds={onlineUserIds} />}
           {activeView === 'database'  && <DatabaseView />}
         </main>
       </div>

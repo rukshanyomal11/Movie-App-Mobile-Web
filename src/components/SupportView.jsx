@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient';
 import { Send, User, MessageSquare } from 'lucide-react';
 import { PageState, SectionPanel } from './UI.jsx';
 
-export function SupportView({ adminProfile, users, movies, bookings }) {
+export function SupportView({ adminProfile, users, movies, bookings, onlineUserIds }) {
   const [chats, setChats] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -70,7 +70,7 @@ export function SupportView({ adminProfile, users, movies, bookings }) {
 
     // Subscribe to real-time messages
     const channel = supabase
-      .channel(`chat_${activeChat.id}`)
+      .channel(`public:chat_messages:${activeChat.id}`)
       .on(
         'postgres_changes',
         {
@@ -123,9 +123,11 @@ export function SupportView({ adminProfile, users, movies, bookings }) {
               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', padding: '1rem', textAlign: 'center' }}>No active chats.</p>
             ) : (
               chats.map((chat) => {
-                const user = users.find(u => u.id === chat.user_id);
-                const movie = movies.find(m => m.id === chat.movie_id);
+                const user = users.find(u => u.authUserId === chat.user_id);
+                const booking = bookings?.find(b => b.id === chat.booking_id);
+                const movieTitle = booking?.movieTitle || 'General Question';
                 const isActive = activeChat?.id === chat.id;
+                const isOnline = onlineUserIds?.has(chat.user_id) ?? false;
 
                 return (
                   <button
@@ -144,14 +146,19 @@ export function SupportView({ adminProfile, users, movies, bookings }) {
                       textAlign: 'left'
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', width: '100%' }}>
-                      <User size={14} color="var(--accent)" />
-                      <span style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '0.95rem' }}>
-                        {user?.name || 'Unknown User'}
-                      </span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem', width: '100%' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <User size={14} color="var(--accent)" />
+                        <span style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '0.95rem' }}>
+                          {user?.name || 'Unknown User'}
+                        </span>
+                      </div>
+                      {isOnline && (
+                        <div style={{ width: '8px', height: '8px', backgroundColor: '#10b981', borderRadius: '50%', boxShadow: '0 0 4px rgba(16,185,129,0.5)' }} title="User is online in the app"></div>
+                      )}
                     </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      Movie: {movie?.title || 'General Question'}
+                      Movie: {movieTitle}
                     </div>
                     {chat.booking_id && (
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
@@ -169,13 +176,24 @@ export function SupportView({ adminProfile, users, movies, bookings }) {
       {/* Right Panel: Active Chat */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {activeChat ? (() => {
-          const activeUser = users.find(u => u.id === activeChat.user_id);
+          const activeUser = users.find(u => u.authUserId === activeChat.user_id);
           const activeBooking = bookings?.find(b => b.id === activeChat.booking_id);
           const activeShowtime = movies.find(m => m.id === activeBooking?.showtimeId);
+          const isUserOnline = onlineUserIds?.has(activeChat.user_id) ?? false;
           
           return (
           <SectionPanel 
-            title={`Chat with ${activeUser?.name || 'User'}`} 
+            title={
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span>Chat with {activeUser?.name || 'User'}</span>
+                {isUserOnline && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', color: '#10b981', fontWeight: 600, backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '0.15rem 0.5rem', borderRadius: '12px' }}>
+                    <div style={{ width: '6px', height: '6px', backgroundColor: '#10b981', borderRadius: '50%' }}></div>
+                    Online
+                  </div>
+                )}
+              </div>
+            }
             style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}
           >
             {/* TICKET DETAILS HEADER */}

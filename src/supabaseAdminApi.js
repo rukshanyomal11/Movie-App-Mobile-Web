@@ -121,7 +121,7 @@ export async function fetchDashboardData() {
       .order('updated_at', { ascending: false }),
     supabase
       .from('app_users')
-      .select('id, full_name, email, role, status, created_at, last_login_at')
+      .select('id, auth_user_id, full_name, email, role, status, created_at, last_login_at')
       .eq('role', 'customer')
       .order('created_at', { ascending: false }),
     supabase
@@ -520,6 +520,7 @@ function mapUsers(rows, bookings) {
 
   return rows.map((row) => ({
     id: row.id,
+    authUserId: row.auth_user_id,
     name: row.full_name,
     email: row.email,
     joinedAt: formatDate(row.created_at),
